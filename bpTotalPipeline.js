@@ -451,42 +451,6 @@ function getBPGlobalCap_() {
 }
 
 // ============================================================================
-// LEGACY FUNCTION STUBS (DEPRECATED)
-// These are kept for backward compatibility but redirect to the canonical pipeline
-// ============================================================================
-
-/**
- * @deprecated Use updateBPTotalFromSources() instead
- * Legacy function - redirects to canonical pipeline
- */
-function syncBPTotals(silent) {
-  console.warn('syncBPTotals is deprecated. Use updateBPTotalFromSources instead.');
-  const count = updateBPTotalFromSources();
-  return {
-    synced: count,
-    errors: []
-  };
-}
-
-/**
- * @deprecated Use ensureBPTotalSchemaEnhanced_() instead
- * Legacy consolidated schema function - now a no-op
- */
-function ensureBPTotalConsolidatedSchema() {
-  console.warn('ensureBPTotalConsolidatedSchema is deprecated. Using canonical schema.');
-  ensureBPTotalSchemaEnhanced_();
-}
-
-/**
- * @deprecated No longer needed
- * Legacy migration function - now a no-op
- */
-function migrateBPTotalSchema_() {
-  console.warn('migrateBPTotalSchema_ is deprecated. Schema is now managed by ensureBPTotalSchemaEnhanced_.');
-  ensureBPTotalSchemaEnhanced_();
-}
-
-// ============================================================================
 // VALIDATION HELPERS
 // ============================================================================
 

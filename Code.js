@@ -1870,24 +1870,3 @@ function menuSyncBPFromSources() {
   }
 }
 
-// ============================================================================
-// DEPRECATED ROUTES - Kept for backwards compatibility
-// ============================================================================
-
-/** @deprecated Use onScanAttendance instead */
-function onScanMissions_deprecated() {
-  console.warn('onScanMissions is deprecated. Use onScanAttendance instead.');
-  onScanAttendance();
-}
-
-/** @deprecated Use onScanAttendance instead */
-function onRecordAttendance_deprecated() {
-  console.warn('onRecordAttendance is deprecated. Use onScanAttendance instead.');
-  onScanAttendance();
-}
-
-/** @deprecated Use onSyncBPTotals instead */
-function onRefreshBPTotalFromSources_deprecated() {
-  console.warn('onRefreshBPTotalFromSources is deprecated. Use onSyncBPTotals instead.');
-  onSyncBPTotals();
-}

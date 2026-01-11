@@ -518,29 +518,6 @@ function getPlayerMissions(preferredName) {
   return result;
 }
 
-/**
- * Awards a mission completion to a player.
- * @param {string} preferredName - Player name
- * @param {string} missionId - Mission identifier
- * @return {Object} Result {success, message, reward}
- */
-function completeMission(preferredName, missionId) {
-  // STUB: Implement mission completion logic
-  // This would update Attendance_Missions and potentially award BP/Keys
-
-  logIntegrityAction('MISSION_COMPLETE', {
-    preferredName,
-    details: `Completed mission: ${missionId}`,
-    status: 'SUCCESS'
-  });
-
-  return {
-    success: true,
-    message: 'Mission completed!',
-    reward: 'Reward pending implementation'
-  };
-}
-
 // ============================================================================
 // ATTENDANCE SERVICE
 // ============================================================================
