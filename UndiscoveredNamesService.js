@@ -72,7 +72,7 @@ function runUndiscoveredNamesScan() {
   const sheets = ss.getSheets();
   sheets.forEach(sheet => {
     const sheetName = sheet.getName();
-    if (!isEventSheetName_(sheetName)) return;
+    if (!isEventTabName_(sheetName)) return;
 
     const values = sheet.getDataRange().getValues();
     if (values.length < 2) return; // header or empty
@@ -117,14 +117,7 @@ function runUndiscoveredNamesScan() {
   Logger.log('UndiscoveredNames scan complete. New names added: ' + rowsToAppend.length);
 }
 
-/**
- * Event sheet detection: MM-DD-YYYY or MM-DDX-YYYY
- */
-function isEventSheetName_(name) {
-  if (!name) return false;
-  const re = /^\d{2}-\d{2}[A-Z]?-\d{4}$/;
-  return re.test(name);
-}
+// NOTE: Event sheet detection now uses canonical isEventTabName_() from utils.js
 
 /**
  * Normalizes a name to a trimmed string (or '' if empty).

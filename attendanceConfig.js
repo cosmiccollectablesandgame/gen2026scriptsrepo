@@ -292,9 +292,10 @@ var ATTENDANCE_CONFIG = {
     INTEGRITY_LOG: 'Integrity_Log'
   },
 
-  // Event sheet name pattern: MM-DD-YYYY or MM-DDX-YYYY
-  // Examples: 11-23-2025 (standard) or 11-23B-2025 (Commander Casual)
-  EVENT_PATTERN: /^(\d{2})-(\d{2})([A-Z])?\-(\d{4})$/,
+  // Event sheet name pattern: MM-DD-YYYY or MM-DDx-YYYY (case-insensitive)
+  // Examples: 11-23-2025, 11-23B-2025, 05-03c-2025, 07-26q-2025
+  // NOTE: For detection, prefer using isEventTabName_() from utils.js
+  EVENT_PATTERN: /^(\d{2})-(\d{2})([a-zA-Z]+)?-(\d{4})$/,
 
   // Format suffix legend (A-Z complete, v7.9.6+ official standard)
   FORMAT_LEGEND: {
@@ -381,12 +382,15 @@ function getSuffixMeta_(suffix) {
 }
 
 /**
- * Extract suffix from event ID (sheet/tab name)
- * @param {string} eventId - Event sheet name (e.g., "11-23-B-2025")
- * @return {string} Suffix or empty string
+ * Extract suffix from event ID (sheet/tab name).
+ * Returns uppercase suffix for consistent lookups in SUFFIX_META.
+ *
+ * @param {string} eventId - Event sheet name (e.g., "11-23B-2025", "05-03c-2025")
+ * @return {string} Uppercase suffix or empty string
  */
 function getSuffixFromEventId_(eventId) {
   if (!eventId) return '';
   var match = eventId.match(ATTENDANCE_CONFIG.EVENT_PATTERN);
-  return match && match[3] ? match[3] : '';
+  // Normalize suffix to uppercase for lookups in SUFFIX_META
+  return match && match[3] ? match[3].toUpperCase() : '';
 }

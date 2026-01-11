@@ -565,21 +565,20 @@ function findCanonicalName_(input, canonicalNames) {
 // ============================================================================
 
 /**
- * Validates if a sheet name is an event sheet
- * Supports: MM-DD-YYYY or MM-DDX-YYYY (X = single letter suffix)
+ * Validates if a sheet name is an event sheet (CASE-INSENSITIVE).
+ * Delegates to canonical isEventTabName_() from utils.js.
+ *
+ * Supports:
+ * - MM-DD-YYYY (e.g., 11-23-2025)
+ * - MM-DDx-YYYY with 1+ letter suffix (e.g., 11-23B-2025, 05-03c-2025, 07-26q-2025)
+ * - Legacy ABCnn_ format (e.g., MTG01_)
+ *
  * @param {string} name - Sheet name to validate
  * @return {boolean} True if valid event sheet name
  */
 function isEventSheetName_(name) {
-  if (!name) return false;
-
-  // Pattern 1: MM-DD-YYYY (e.g., 11-23-2025)
-  const plain = /^\d{2}-\d{2}-\d{4}$/;
-
-  // Pattern 2: MM-DDX-YYYY (e.g., 11-23B-2025, where X is single letter)
-  const suffixed = /^\d{2}-\d{2}[A-Z]-\d{4}$/;
-
-  return plain.test(name) || suffixed.test(name);
+  // Delegate to canonical helper in utils.js (case-insensitive)
+  return isEventTabName_(name);
 }
 
 /**

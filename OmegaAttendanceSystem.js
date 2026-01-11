@@ -686,3 +686,237 @@ function updateAttendanceMissions(ss, missionProgress, missionDefs) {
 
   Logger.log('Updated Attendance_Missions for ' + playerList.length + ' players with ' + missionIds.length + ' missions');
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// EVENT SHEET SCANNING (CASE-INSENSITIVE)
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * Scans all event sheets and extracts attendance/placement data.
+ * Uses canonical listEventTabsCI_() from utils.js for CASE-INSENSITIVE tab detection.
+ *
+ * @param {Spreadsheet} ss - Active spreadsheet
+ * @return {Object} Event data: {events, players, playerEventHistory}
+ */
+function scanAllEventSheets(ss) {
+  var eventTabNames = listEventTabsCI_(ss);
+  var allPlayers = new Set();
+  var events = [];
+  var playerEventHistory = new Map();
+
+  // Pattern to extract date/suffix from MM-DD-YYYY or MM-DDx-YYYY (case-insensitive)
+  var datePattern = /^(\d{2})-(\d{2})([a-zA-Z]*)-(\d{4})$/;
+
+  for (var i = 0; i < eventTabNames.length; i++) {
+    var sheetName = eventTabNames[i];
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) continue;
+
+    // Parse date from sheet name
+    var match = sheetName.match(datePattern);
+    var eventDate = null;
+    var suffix = '';
+
+    if (match) {
+      var month = parseInt(match[1], 10);
+      var day = parseInt(match[2], 10);
+      suffix = (match[3] || '').toUpperCase(); // Normalize suffix to uppercase for lookups
+      var year = parseInt(match[4], 10);
+      eventDate = new Date(year, month - 1, day);
+    } else {
+      // Legacy format - use current date
+      eventDate = new Date();
+    }
+
+    // Extract roster and placements from sheet
+    var sheetData = extractEventSheetData_(sheet);
+
+    var eventObj = {
+      sheetName: sheetName,
+      date: eventDate,
+      players: sheetData.players,
+      placements: sheetData.placements,
+      format: SUFFIX_META[suffix] ? SUFFIX_META[suffix].name : '',
+      suffix: suffix
+    };
+
+    events.push(eventObj);
+
+    // Track all players and their event history
+    for (var p = 0; p < sheetData.players.length; p++) {
+      var playerName = sheetData.players[p];
+      allPlayers.add(playerName);
+
+      // Build player event history for streak calculations
+      if (!playerEventHistory.has(playerName)) {
+        playerEventHistory.set(playerName, []);
+      }
+      playerEventHistory.get(playerName).push({
+        event: eventObj,
+        placement: sheetData.placements[playerName] || null
+      });
+    }
+  }
+
+  // Sort events chronologically
+  events.sort(function(a, b) {
+    return a.date.getTime() - b.date.getTime();
+  });
+
+  // Sort each player's event history chronologically
+  playerEventHistory.forEach(function(history, player) {
+    history.sort(function(a, b) {
+      return a.event.date.getTime() - b.event.date.getTime();
+    });
+  });
+
+  Logger.log('Scanned ' + events.length + ' event sheets, found ' + allPlayers.size + ' unique players');
+
+  return {
+    events: events,
+    players: allPlayers,
+    playerEventHistory: playerEventHistory
+  };
+}
+
+/**
+ * Extracts player roster and placement data from an event sheet.
+ * Looks for PreferredName/player column and standing column.
+ *
+ * @param {Sheet} sheet - Event sheet
+ * @return {Object} {players: Array<string>, placements: Object}
+ * @private
+ */
+function extractEventSheetData_(sheet) {
+  var players = [];
+  var placements = {};
+
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return { players: players, placements: placements };
+  }
+
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+
+  // Find player name column (case-insensitive)
+  var playerCol = -1;
+  var standingCol = -1;
+
+  for (var h = 0; h < headers.length; h++) {
+    var header = String(headers[h]).toLowerCase().trim();
+
+    // Player name column
+    if (playerCol === -1) {
+      if (header === 'preferredname' || header === 'preferred_name_id' ||
+          header === 'player' || header === 'name' || header === 'player_name') {
+        playerCol = h;
+      }
+    }
+
+    // Standing/placement column
+    if (standingCol === -1) {
+      if (header === 'final standing' || header === 'standing' ||
+          header === 'place' || header === 'placement' || header === 'rank') {
+        standingCol = h;
+      }
+    }
+  }
+
+  // Default to column B (index 1) for player if not found
+  if (playerCol === -1) playerCol = 1;
+
+  // Extract data
+  for (var r = 1; r < data.length; r++) {
+    var playerName = String(data[r][playerCol] || '').trim();
+    if (!playerName) continue;
+
+    players.push(playerName);
+
+    // Get placement if available
+    if (standingCol !== -1) {
+      var standing = parseInt(data[r][standingCol], 10);
+      if (!isNaN(standing) && standing > 0) {
+        placements[playerName] = standing;
+      }
+    }
+  }
+
+  return { players: players, placements: placements };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// UTILITY FUNCTIONS
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * Get ISO week number for a date
+ * @param {Date} date - Date object
+ * @return {number} Week number (1-53)
+ */
+function getWeekNumber(date) {
+  var d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  var dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+/**
+ * Get number of weeks in a year
+ * @param {number} year - Year
+ * @return {number} Number of weeks (52 or 53)
+ */
+function getWeeksInYear(year) {
+  var d = new Date(year, 11, 31);
+  var week = getWeekNumber(d);
+  return week === 1 ? 52 : week;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// LOGGING
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * Log attendance scan results to Integrity_Log
+ */
+function logAttendanceScan(ss, summary) {
+  try {
+    var logSheet = ss.getSheetByName(ATTENDANCE_CONFIG.SHEETS.INTEGRITY_LOG);
+    if (!logSheet) {
+      logSheet = ss.insertSheet(ATTENDANCE_CONFIG.SHEETS.INTEGRITY_LOG);
+      logSheet.appendRow(['Timestamp', 'Action', 'Details', 'Status']);
+    }
+
+    logSheet.appendRow([
+      new Date(),
+      'OMEGA_ATTENDANCE_SCAN',
+      'Events: ' + summary.eventsScanned + ', Players: ' + summary.playersTracked +
+      ', Missions: ' + summary.missionsComputed + ', Duration: ' + summary.duration.toFixed(2) + 's',
+      'SUCCESS'
+    ]);
+  } catch (e) {
+    Logger.log('Failed to log attendance scan: ' + e.toString());
+  }
+}
+
+/**
+ * Log attendance scan error to Integrity_Log
+ */
+function logAttendanceError(ss, error) {
+  try {
+    var logSheet = ss.getSheetByName(ATTENDANCE_CONFIG.SHEETS.INTEGRITY_LOG);
+    if (!logSheet) {
+      logSheet = ss.insertSheet(ATTENDANCE_CONFIG.SHEETS.INTEGRITY_LOG);
+      logSheet.appendRow(['Timestamp', 'Action', 'Details', 'Status']);
+    }
+
+    logSheet.appendRow([
+      new Date(),
+      'OMEGA_ATTENDANCE_SCAN',
+      'Error: ' + error.toString(),
+      'FAILED'
+    ]);
+  } catch (e) {
+    Logger.log('Failed to log error: ' + e.toString());
+  }
+}

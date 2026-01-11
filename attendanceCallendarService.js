@@ -121,29 +121,34 @@ function buildAttendanceCalendarSheet() {
 
 /**
  * Gets all event sheets with metadata, sorted chronologically.
- * Matches patterns: MM-DD-YYYY or MM-DDX-YYYY (X = A-Z suffix)
+ * Uses canonical listEventTabsCI_() from utils.js for CASE-INSENSITIVE matching.
+ *
+ * Matches patterns (case-insensitive):
+ * - MM-DD-YYYY (e.g., "11-26-2025")
+ * - MM-DDx-YYYY with 1+ letter suffix (e.g., "11-26C-2025", "05-03c-2025", "07-26q-2025")
+ * - Legacy ABCnn_ prefix (e.g., "MTG01_")
  *
  * @return {Array<Object>} Array of {sheetName, eventDate, weekNumber, month, year}
  * @private
  */
 function getEventSheets_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = ss.getSheets();
 
-  // Pattern: MM-DD-YYYY or MM-DDX-YYYY (X = optional A-Z suffix)
-  // Examples: 11-26-2025, 11-26C-2025
-  const eventPattern = /^(\d{2})-(\d{2})([A-Z])?-(\d{4})$/;
+  // Use canonical case-insensitive helper from utils.js
+  const eventTabNames = listEventTabsCI_(ss);
+
+  // Pattern to extract date parts from MM-DD-YYYY or MM-DDx-YYYY (case-insensitive)
+  const datePattern = /^(\d{2})-(\d{2})([a-zA-Z]*)-(\d{4})$/;
 
   const events = [];
 
-  sheets.forEach(sheet => {
-    const name = sheet.getName();
-    const match = name.match(eventPattern);
+  eventTabNames.forEach(name => {
+    const match = name.match(datePattern);
 
     if (match) {
       const month = parseInt(match[1], 10);
       const day = parseInt(match[2], 10);
-      const suffix = match[3] || ''; // Optional A-Z suffix
+      const suffix = match[3] || ''; // Optional letter suffix (any case)
       const year = parseInt(match[4], 10);
 
       // Create date object for sorting and grouping
@@ -161,6 +166,19 @@ function getEventSheets_() {
         suffix: suffix,
         weekNumber: weekNumber,
         weekYear: getISOWeekYear_(eventDate)
+      });
+    } else {
+      // Legacy format (ABCnn_) - use current date as fallback for sorting
+      // These are rare but should still be included
+      events.push({
+        sheetName: name,
+        eventDate: new Date(2000, 0, 1), // Sort to beginning
+        month: 1,
+        year: 2000,
+        day: 1,
+        suffix: '',
+        weekNumber: 1,
+        weekYear: 2000
       });
     }
   });

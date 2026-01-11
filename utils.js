@@ -437,3 +437,107 @@ function unique(array) {
 function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
+
+// ============================================================================
+// EVENT TAB DETECTION (CANONICAL - Case-Insensitive)
+// ============================================================================
+
+/**
+ * Normalizes a tab name by trimming whitespace.
+ * @param {*} s - Raw tab name (any type)
+ * @return {string} Trimmed string
+ */
+function normalizeTabName_(s) {
+  return String(s || '').trim();
+}
+
+/**
+ * Normalizes a tab name to lowercase for case-insensitive matching.
+ * @param {*} s - Raw tab name (any type)
+ * @return {string} Trimmed lowercase string
+ */
+function normalizeTabNameLower_(s) {
+  return normalizeTabName_(s).toLowerCase();
+}
+
+/**
+ * Checks if a sheet name matches event tab patterns (CASE-INSENSITIVE).
+ *
+ * Patterns matched:
+ * - MM-DD-YYYY (e.g., "11-26-2025")
+ * - MM-DDx-YYYY with 1+ letter suffix (e.g., "11-26C-2025", "05-03c-2025", "07-26ZZ-2025")
+ * - Legacy ABCnn_ prefix (e.g., "MTG01_", "CMD12_")
+ *
+ * @param {string} name - Sheet name to check
+ * @return {boolean} True if matches event tab pattern
+ */
+function isEventTabName_(name) {
+  var n = normalizeTabNameLower_(name);
+  if (!n) return false;
+
+  // Pattern 1: MM-DD-YYYY or MM-DDx-YYYY (x = one or more letters, case-insensitive)
+  // Examples: 11-26-2025, 11-26c-2025, 05-03C-2025, 07-26zz-2025
+  if (/^\d{2}-\d{2}([a-z]+)?-\d{4}$/.test(n)) {
+    return true;
+  }
+
+  // Pattern 2: Legacy ABC12_ format (case-insensitive)
+  // Examples: MTG01_, CMD12_, mtg01_
+  if (/^[a-z]{3}\d{2}_/.test(n)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Lists all event tabs in a spreadsheet (CASE-INSENSITIVE matching).
+ * Returns tab names in their original casing, sorted alphabetically.
+ *
+ * @param {Spreadsheet} ss - Spreadsheet to scan (defaults to active)
+ * @return {Array<string>} Event tab names, sorted
+ */
+function listEventTabsCI_(ss) {
+  ss = ss || SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheets()
+    .map(function(s) { return s.getName(); })
+    .filter(isEventTabName_)
+    .sort();
+}
+
+/**
+ * Debug function to test event tab detection.
+ * Logs all detected event tabs to the Apps Script log.
+ * Run this from the Script Editor to verify tab detection.
+ */
+function debug_listEventTabs() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var allTabs = ss.getSheets().map(function(s) { return s.getName(); });
+  var eventTabs = listEventTabsCI_(ss);
+
+  Logger.log('=== EVENT TAB DETECTION DEBUG ===');
+  Logger.log('Total sheets: ' + allTabs.length);
+  Logger.log('Event tabs detected: ' + eventTabs.length);
+  Logger.log('');
+  Logger.log('--- All sheets ---');
+  allTabs.forEach(function(name) {
+    var isEvent = isEventTabName_(name);
+    Logger.log((isEvent ? '[EVENT] ' : '[     ] ') + name);
+  });
+  Logger.log('');
+  Logger.log('--- Event tabs only ---');
+  eventTabs.forEach(function(name) {
+    Logger.log('  ' + name);
+  });
+  Logger.log('');
+
+  // Test with known examples
+  var testCases = ['04-19Z-2025', '05-03C-2025', '07-26q-2025', '11-29C-2025',
+                   '11-26-2025', 'PreferredNames', 'BP_Total', 'MTG01_Legacy'];
+  Logger.log('--- Test cases ---');
+  testCases.forEach(function(name) {
+    Logger.log((isEventTabName_(name) ? '[MATCH] ' : '[SKIP ] ') + name);
+  });
+
+  return eventTabs;
+}
