@@ -1,0 +1,2075 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ========================================
+       COSMIC GAMES - EMPLOYEE TASK SYSTEM
+       Clean, Efficient, Future-You Approved
+       ======================================== */
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* Core Palette - Cosmic Blue Theme */
+      --cosmic-900: #0f172a;
+      --cosmic-800: #1e293b;
+      --cosmic-700: #334155;
+      --cosmic-600: #475569;
+      --cosmic-500: #64748b;
+      --cosmic-400: #94a3b8;
+      --cosmic-300: #cbd5e1;
+      --cosmic-200: #e2e8f0;
+      --cosmic-100: #f1f5f9;
+      --cosmic-50: #f8fafc;
+
+      /* Accent Colors */
+      --accent-primary: #3b82f6;
+      --accent-primary-hover: #2563eb;
+      --accent-primary-light: #dbeafe;
+      --accent-primary-glow: rgba(59, 130, 246, 0.15);
+      
+      --accent-success: #10b981;
+      --accent-success-light: #d1fae5;
+      --accent-success-glow: rgba(16, 185, 129, 0.15);
+      
+      --accent-warning: #f59e0b;
+      --accent-warning-light: #fef3c7;
+      --accent-warning-glow: rgba(245, 158, 11, 0.15);
+      
+      --accent-danger: #ef4444;
+      --accent-danger-light: #fee2e2;
+      --accent-danger-glow: rgba(239, 68, 68, 0.15);
+      
+      --accent-critical: #dc2626;
+      --accent-critical-dark: #991b1b;
+
+      /* Surfaces */
+      --surface-bg: var(--cosmic-100);
+      --surface-card: #ffffff;
+      --surface-card-hover: #ffffff;
+      --surface-input: #ffffff;
+      --surface-muted: var(--cosmic-50);
+
+      /* Text */
+      --text-primary: var(--cosmic-900);
+      --text-secondary: var(--cosmic-600);
+      --text-muted: var(--cosmic-400);
+      --text-inverse: #ffffff;
+
+      /* Borders */
+      --border-default: var(--cosmic-200);
+      --border-focus: var(--accent-primary);
+      --border-error: var(--accent-danger);
+
+      /* Shadows */
+      --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+      --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+      --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 10px 10px -5px rgba(15, 23, 42, 0.04);
+      --shadow-focus: 0 0 0 3px var(--accent-primary-glow);
+      --shadow-error: 0 0 0 3px var(--accent-danger-glow);
+
+      /* Radii */
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+
+      /* Transitions */
+      --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+      /* Typography */
+      --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      color: var(--text-primary);
+      background: var(--surface-bg);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* ========================================
+       LAYOUT
+       ======================================== */
+
+    .app-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 24px 140px 24px;
+    }
+
+    /* ========================================
+       HEADER
+       ======================================== */
+
+    .header {
+      background: var(--surface-card);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md);
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent-primary), #8b5cf6, var(--accent-primary));
+      background-size: 200% 100%;
+      animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .header-content {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .header-text {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .header-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0 0 6px 0;
+      letter-spacing: -0.02em;
+    }
+
+    .header-subtitle {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin: 0;
+      font-weight: 400;
+    }
+
+    .header-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-completed {
+      background: var(--accent-success-light);
+      color: var(--accent-success);
+    }
+
+    .badge-picked-up {
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+    }
+
+    .badge-critical {
+      background: var(--accent-danger-light);
+      color: var(--accent-danger);
+      animation: pulse-critical 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-critical {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .badge-icon {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ========================================
+       SECTIONS (Cards)
+       ======================================== */
+
+    .section {
+      background: var(--surface-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-default);
+      padding: 24px 28px;
+      margin-bottom: 16px;
+      transition: box-shadow var(--transition-base), border-color var(--transition-base);
+    }
+
+    .section:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .section:focus-within {
+      border-color: var(--accent-primary);
+      box-shadow: var(--shadow-md);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .section-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent-primary), #6366f1);
+      color: var(--text-inverse);
+      border-radius: var(--radius-md);
+      font-weight: 700;
+      font-size: 0.875rem;
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      font-size: 1.0625rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .section.de-emphasized {
+      opacity: 0.6;
+      background: var(--surface-muted);
+    }
+
+    .section.de-emphasized:hover {
+      opacity: 0.8;
+    }
+
+    /* ========================================
+       FORM ELEMENTS
+       ======================================== */
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.8125rem;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      letter-spacing: 0.01em;
+    }
+
+    .label-optional {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-left: 6px;
+    }
+
+    .helper-text {
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .helper-text.due-today {
+      color: var(--accent-warning);
+      font-weight: 500;
+    }
+
+    .helper-text.overdue {
+      color: var(--accent-danger);
+      font-weight: 500;
+    }
+
+    /* Text Inputs & Textareas */
+    input[type="text"],
+    input[type="date"],
+    input[type="email"],
+    input[type="tel"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid var(--border-default);
+      border-radius: var(--radius-md);
+      font-size: 0.9375rem;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      background: var(--surface-input);
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    input:hover,
+    textarea:hover,
+    select:hover {
+      border-color: var(--cosmic-300);
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: var(--shadow-focus);
+    }
+
+    input.input-large {
+      font-size: 1.125rem;
+      padding: 16px 18px;
+      font-weight: 500;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 110px;
+      line-height: 1.6;
+    }
+
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 44px;
+    }
+
+    /* Checkboxes */
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      gap: 12px;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      margin: 0;
+      accent-color: var(--accent-primary);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .checkbox-row label {
+      margin-bottom: 0;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 0.9375rem;
+    }
+
+    /* ========================================
+       CHIPS (Quick Select Buttons)
+       ======================================== */
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 18px;
+      background: var(--surface-muted);
+      border: 2px solid var(--border-default);
+      border-radius: var(--radius-full);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-family: var(--font-sans);
+    }
+
+    .chip:hover {
+      background: var(--accent-primary-light);
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    .chip.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: var(--text-inverse);
+    }
+
+    /* ========================================
+       TOGGLE BUTTON GROUP
+       ======================================== */
+
+    .toggle-group {
+      display: inline-flex;
+      background: var(--surface-muted);
+      border-radius: var(--radius-md);
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .toggle-btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-family: var(--font-sans);
+    }
+
+    .toggle-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .toggle-btn.active {
+      background: var(--surface-card);
+      color: var(--accent-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ========================================
+       BUTTON GROUPS (Urgency, Status)
+       ======================================== */
+
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .button-group .btn {
+      padding: 10px 18px;
+      border: 2px solid var(--border-default);
+      border-radius: var(--radius-md);
+      background: var(--surface-card);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-family: var(--font-sans);
+    }
+
+    .button-group .btn:hover {
+      border-color: var(--accent-primary);
+      background: var(--accent-primary-light);
+    }
+
+    .button-group .btn.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: var(--text-inverse);
+    }
+
+    /* Urgency-specific colors */
+    .btn-urgency-low.active {
+      background: #22c55e;
+      border-color: #22c55e;
+    }
+
+    .btn-urgency-normal.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+    }
+
+    .btn-urgency-high.active {
+      background: var(--accent-warning);
+      border-color: var(--accent-warning);
+    }
+
+    .btn-urgency-critical.active {
+      background: var(--accent-danger);
+      border-color: var(--accent-danger);
+    }
+
+    /* Status-specific colors when active */
+    .btn-status[data-value="New"].active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+    }
+
+    .btn-status[data-value="In Progress"].active {
+      background: #8b5cf6;
+      border-color: #8b5cf6;
+    }
+
+    .btn-status[data-value="Waiting on Customer"].active {
+      background: var(--accent-warning);
+      border-color: var(--accent-warning);
+    }
+
+    .btn-status[data-value="Completed"].active {
+      background: var(--accent-success);
+      border-color: var(--accent-success);
+    }
+
+    .btn-status[data-value="Canceled"].active {
+      background: var(--cosmic-500);
+      border-color: var(--cosmic-500);
+    }
+
+    /* ========================================
+       AUTOCOMPLETE / PLAYER SEARCH
+       ======================================== */
+
+    .autocomplete-container {
+      position: relative;
+    }
+
+    .autocomplete-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--surface-card);
+      border: 2px solid var(--accent-primary);
+      border-top: none;
+      border-radius: 0 0 var(--radius-md) var(--radius-md);
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: var(--shadow-lg);
+      display: none;
+    }
+
+    .autocomplete-dropdown.show {
+      display: block;
+    }
+
+    .autocomplete-item {
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .autocomplete-item:last-child {
+      border-bottom: none;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.highlighted {
+      background: var(--accent-primary-light);
+    }
+
+    .autocomplete-item.selected {
+      background: var(--accent-primary);
+      color: var(--text-inverse);
+    }
+
+    .autocomplete-empty {
+      padding: 16px;
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+    }
+
+    /* ========================================
+       QUICK DATE BUTTONS
+       ======================================== */
+
+    .date-with-buttons {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .date-with-buttons input[type="date"] {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .quick-date-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .quick-date-btn {
+      padding: 10px 16px;
+      border: 2px solid var(--border-default);
+      border-radius: var(--radius-md);
+      background: var(--surface-card);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+      font-family: var(--font-sans);
+    }
+
+    .quick-date-btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+      background: var(--accent-primary-light);
+    }
+
+    /* ========================================
+       META FIELDS (Read-only)
+       ======================================== */
+
+    .meta-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px 36px;
+      padding: 18px 22px;
+      background: var(--surface-muted);
+      border-radius: var(--radius-md);
+      margin-top: 20px;
+    }
+
+    .meta-field {
+      font-size: 0.8125rem;
+    }
+
+    .meta-label {
+      color: var(--text-muted);
+      margin-right: 8px;
+    }
+
+    .meta-value {
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+    }
+
+    /* ========================================
+       VALIDATION ERRORS
+       ======================================== */
+
+    .field-error {
+      font-size: 0.8125rem;
+      color: var(--accent-danger);
+      margin-top: 8px;
+      display: none;
+      font-weight: 500;
+    }
+
+    .field-error.show {
+      display: block;
+    }
+
+    .has-error input,
+    .has-error textarea,
+    .has-error select {
+      border-color: var(--border-error);
+    }
+
+    .has-error input:focus,
+    .has-error textarea:focus,
+    .has-error select:focus {
+      box-shadow: var(--shadow-error);
+    }
+
+    /* ========================================
+       FOOTER (Sticky Save/Cancel)
+       ======================================== */
+
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface-card);
+      border-top: 1px solid var(--border-default);
+      padding: 18px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      z-index: 200;
+      box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
+    }
+
+    .footer-message {
+      flex: 1;
+      font-size: 0.9375rem;
+    }
+
+    .footer-message.success {
+      color: var(--accent-success);
+      font-weight: 600;
+    }
+
+    .footer-message.error {
+      color: var(--accent-danger);
+      font-weight: 600;
+    }
+
+    .footer-buttons {
+      display: flex;
+      gap: 14px;
+    }
+
+    .btn-cancel {
+      padding: 12px 28px;
+      border: 2px solid var(--border-default);
+      border-radius: var(--radius-md);
+      background: var(--surface-card);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-family: var(--font-sans);
+    }
+
+    .btn-cancel:hover {
+      border-color: var(--cosmic-400);
+      color: var(--text-primary);
+    }
+
+    .btn-save {
+      padding: 12px 36px;
+      border: none;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--accent-primary), #6366f1);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-inverse);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-family: var(--font-sans);
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
+    }
+
+    .btn-save:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+    }
+
+    .btn-save:active {
+      transform: translateY(0);
+    }
+
+    .btn-save:disabled {
+      background: var(--cosmic-300);
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* ========================================
+       LOADING OVERLAY
+       ======================================== */
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 300;
+      backdrop-filter: blur(4px);
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--cosmic-200);
+      border-top-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loading-text {
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ========================================
+       RESPONSIVE
+       ======================================== */
+
+    @media (max-width: 700px) {
+      .app-container {
+        padding: 16px 16px 140px 16px;
+      }
+
+      .header {
+        padding: 24px 20px;
+      }
+
+      .header-title {
+        font-size: 1.5rem;
+      }
+
+      .section {
+        padding: 20px;
+      }
+
+      .section-header {
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .date-with-buttons {
+        flex-direction: column;
+      }
+
+      .date-with-buttons input[type="date"] {
+        width: 100%;
+      }
+
+      .toggle-group {
+        width: 100%;
+      }
+
+      .toggle-btn {
+        flex: 1;
+        padding: 12px 16px;
+      }
+
+      .button-group {
+        gap: 8px;
+      }
+
+      .button-group .btn {
+        padding: 10px 14px;
+        font-size: 0.8125rem;
+      }
+
+      .footer {
+        padding: 14px 16px;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .footer-buttons {
+        width: 100%;
+      }
+
+      .footer-buttons button {
+        flex: 1;
+      }
+    }
+
+    /* ========================================
+       ANIMATIONS
+       ======================================== */
+
+    .section {
+      animation: fadeSlideIn 0.3s ease-out;
+      animation-fill-mode: both;
+    }
+
+    .section:nth-child(1) { animation-delay: 0.05s; }
+    .section:nth-child(2) { animation-delay: 0.1s; }
+    .section:nth-child(3) { animation-delay: 0.15s; }
+    .section:nth-child(4) { animation-delay: 0.2s; }
+    .section:nth-child(5) { animation-delay: 0.25s; }
+    .section:nth-child(6) { animation-delay: 0.3s; }
+    .section:nth-child(7) { animation-delay: 0.35s; }
+    .section:nth-child(8) { animation-delay: 0.4s; }
+
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Preloaded data from Apps Script template -->
+  <script>
+    const assignmentId = <?= JSON.stringify(assignmentId) ?>;
+    const EMPLOYEES = <?= JSON.stringify(employees) ?>;
+    const PREFERRED_NAMES = <?= JSON.stringify(preferredNames) ?>;
+    const preloadedData = <?= JSON.stringify(assignmentData) ?>;
+  </script>
+
+  <div class="app-container">
+
+    <!-- ========================================
+         HEADER
+         ======================================== -->
+    <div class="header">
+      <div class="header-content">
+        <div class="header-text">
+          <h1 class="header-title" id="pageTitle">New Task</h1>
+          <p class="header-subtitle">Thanks for taking care of this — future-you appreciates it.</p>
+        </div>
+        <div class="header-badges" id="headerBadges">
+          <!-- Badges inserted dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
+         SECTION 1: What needs done?
+         ======================================== -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-number">1</span>
+        <h2 class="section-title">What needs done?</h2>
+      </div>
+      <div class="section-body">
+        <div class="form-group">
+          <input type="text"
+                 id="task_summary"
+                 class="input-large"
+                 placeholder="Enter a quick summary..."
+                 autocomplete="off">
+          <p class="helper-text">Quick summary that future-you will understand in 3 seconds.</p>
+          <p class="field-error" id="task_summary_error"></p>
+        </div>
+        <div class="chips" id="taskChips">
+          <button type="button" class="chip" data-value="Hold order for pickup">Hold order for pickup</button>
+          <button type="button" class="chip" data-value="Call player about preorder">Call player about preorder</button>
+          <button type="button" class="chip" data-value="Fix account / store credit">Fix account / store credit</button>
+          <button type="button" class="chip" data-value="Order product / restock">Order product / restock</button>
+          <button type="button" class="chip" data-value="General store task">General store task</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
+         SECTION 2: Who is this for?
+         ======================================== -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-number">2</span>
+        <h2 class="section-title">Who is this for?</h2>
+      </div>
+      <div class="section-body">
+        <div class="toggle-group" id="forWhomToggle">
+          <button type="button" class="toggle-btn active" data-value="player">For a Player</button>
+          <button type="button" class="toggle-btn" data-value="store">For the Store</button>
+        </div>
+
+        <div class="form-group" id="playerPickerGroup" style="margin-top: 20px;">
+          <label for="playerSearch">Player Name</label>
+          <div class="autocomplete-container">
+            <input type="text"
+                   id="playerSearch"
+                   placeholder="Start typing to search players..."
+                   autocomplete="off">
+            <div class="autocomplete-dropdown" id="playerDropdown"></div>
+          </div>
+          <input type="hidden" id="preferred_name_id" value="">
+          <p class="helper-text">Start typing — we'll find the closest match from your player list.</p>
+          <p class="field-error" id="preferred_name_id_error"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
+         SECTION 3: Details of the work
+         ======================================== -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-number">3</span>
+        <h2 class="section-title">Details of the work</h2>
+      </div>
+      <div class="section-body">
+        <div class="form-group">
+          <label for="details">Additional Details <span class="label-optional">(optional)</span></label>
+          <textarea id="details"
+                    rows="4"
+                    placeholder="What does your coworker need to know to finish this happily?"></textarea>
+          <p class="helper-text">Include anything that'll help — product SKUs, special instructions, context.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
+         SECTION 4: When is this due?
+         ======================================== -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-number">4</span>
+        <h2 class="section-title">When is this due?</h2>
+      </div>
+      <div class="section-body">
+        <div class="form-group">
+          <div class="date-with-buttons">
+            <input type="date" id="due_date">
+            <div class="quick-date-buttons">
+              <button type="button" class="quick-date-btn" data-offset="0">Today</button>
+              <button type="button" class="quick-date-btn" data-offset="1">Tomorrow</button>
+              <button type="button" class="quick-date-btn" data-offset="3">+3 Days</button>
+              <button type="button" class="quick-date-btn" data-offset="7">+1 Week</button>
+              <button type="button" class="quick-date-btn" data-offset="friday">Next Open Day</button>
+            </div>
+          </div>
+          <p class="helper-text" id="dueDateHelper"></p>
+          <p class="field-error" id="due_date_error"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
+         SECTION 5: Priority & Status
+         ======================================== -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-number">5</span>
+        <h2 class="section-title">Priority & Status</h2>
+      </div>
+      <div class="section-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Urgency</label>
+            <div class="button-group" id="urgencyGroup">
+              <button type="button" class="btn btn-urgency-low" data-value="Low">Low</button>
+              <button type="button" class="btn btn-urgency-normal active" data-value="Normal">Normal</button>
+              <button type="button" class="btn btn-urgency-high" data-value="High">High</button>
+              <button type="button" class="btn btn-urgency-critical" data-value="Critical">Critical</button>
+            </div>
+            <p class="field-error" id="urgency_error"></p>
+          </div>
+
+          <div class="form-group">
+            <label>Status</label>
+            <div class="button-group" id="statusGroup">
+              <button type="button" class="btn btn-status active" data-value="New">New</button>
+              <button type="button" class="btn btn-status" data-value="In Progress">In Progress</button>
+              <button type="button" class="btn btn-status" data-value="Waiting on Customer">Waiting</button>
+              <button type="button" class="btn btn-status" data-value="Completed">Completed</button>
+              <button type="button" class="btn btn-status" data-value="Canceled">Canceled</button>
+            </div>
+            <p class="field-error" id="status_error"></p>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 20px;">
+          <label for="assigned_employee">Assigned To <span class="label-optional">(optional)</span></label>
+          <select id="assigned_employee">
+            <option value="">Unassigned — anyone can pick this up</option>
+          </select>
+          <p class="helper-text">Leave unassigned for the next available person, or assign to a specific team member.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
+         SECTION 6: Customer Contact
+         ======================================== -->
+    <div class="section" id="contactSection">
+      <div class="section-header">
+        <span class="section-number">6</span>
+        <h2 class="section-title">Customer Contact</h2>
+      </div>
+      <div class="section-body" id="contactBody">
+        <div class="form-group">
+          <label>How did they reach out? <span class="label-optional">(optional)</span></label>
+          <div class="chips" id="reachOutChips">
+            <button type="button" class="chip" data-value="In-Store">In-Store</button>
+            <button type="button" class="chip" data-value="Phone">Phone</button>
+            <button type="button" class="chip" data-value="Text">Text</button>
+            <button type="button" class="chip" data-value="Facebook">Facebook</button>
+            <button type="button" class="chip" data-value="Instagram">Instagram</button>
+            <button type="button" class="chip" data-value="Email">Email</button>
+            <button type="button" class="chip" data-value="Website">Website</button>
+            <button type="button" class="chip" data-value="Other">Other</button>
+          </div>
+          <input type="hidden" id="how_did_they_reach_out" value="">
+        </div>
+
+        <div class="form-row" style="margin-top: 20px;">
+          <div class="form-group">
+            <label for="contact_information">Contact Info <span class="label-optional">(optional)</span></label>
+            <input type="text"
+                   id="contact_information"
+                   placeholder="Phone number, email, or other contact method...">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="checkbox-row">
+            <input type="checkbox" id="ok_to_text">
+            <label for="ok_to_text">OK to text this number</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="expecting_callback">
+            <label for="expecting_callback">Expecting a callback</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
+         SECTION 7: Pickup & Completion
+         ======================================== -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-number">7</span>
+        <h2 class="section-title">Pickup & Completion</h2>
+      </div>
+      <div class="section-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="pickup_date">Pickup Date <span class="label-optional">(optional)</span></label>
+            <input type="date" id="pickup_date">
+          </div>
+          <div class="form-group">
+            <label for="source">Source <span class="label-optional">(optional)</span></label>
+            <input type="text"
+                   id="source"
+                   placeholder="e.g., Storefront, Website, Event...">
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top: 12px;">
+          <div class="checkbox-row">
+            <input type="checkbox" id="picked_up">
+            <label for="picked_up">Item has been picked up</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="completed">
+            <label for="completed">Mark task as completed</label>
+          </div>
+        </div>
+        <p class="field-error" id="pickup_error"></p>
+        <p class="helper-text">Check these off when finished so the whole team stays in sync.</p>
+      </div>
+    </div>
+
+    <!-- ========================================
+         SECTION 8: Meta / System Fields
+         ======================================== -->
+    <div class="section" id="metaSection" style="display: none;">
+      <div class="section-header">
+        <span class="section-number">8</span>
+        <h2 class="section-title">System Information</h2>
+      </div>
+      <div class="section-body">
+        <div class="meta-fields">
+          <div class="meta-field" id="metaAssignmentId" style="display: none;">
+            <span class="meta-label">Assignment ID:</span>
+            <span class="meta-value" id="display_assignment_id">—</span>
+          </div>
+          <div class="meta-field">
+            <span class="meta-label">Created:</span>
+            <span class="meta-value" id="display_created_at">—</span>
+          </div>
+          <div class="meta-field">
+            <span class="meta-label">Created By:</span>
+            <span class="meta-value" id="display_created_by">—</span>
+          </div>
+          <div class="meta-field" id="metaCompletedAt" style="display: none;">
+            <span class="meta-label">Completed:</span>
+            <span class="meta-value" id="display_completed_at">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ========================================
+       STICKY FOOTER
+       ======================================== -->
+  <div class="footer">
+    <div class="footer-message" id="footerMessage"></div>
+    <div class="footer-buttons">
+      <button type="button" class="btn-cancel" onclick="handleCancel()">Cancel</button>
+      <button type="button" class="btn-save" id="saveBtn" onclick="handleSave()">Save Task</button>
+    </div>
+  </div>
+
+  <!-- ========================================
+       LOADING OVERLAY
+       ======================================== -->
+  <div class="loading-overlay hidden" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Saving your task...</div>
+  </div>
+
+  <script>
+    /* ========================================
+       STATE
+       ======================================== */
+
+    let formState = {
+      isForPlayer: true,
+      selectedUrgency: 'Normal',
+      selectedStatus: 'New',
+      selectedReachOut: '',
+      highlightedIndex: -1,
+      filteredNames: [],
+      isDirty: false
+    };
+
+    /* ========================================
+       INITIALIZATION
+       ======================================== */
+
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeForm();
+    });
+
+    function initializeForm() {
+      // Populate employee dropdown
+      populateEmployees();
+
+      // Set up event listeners
+      setupTaskChips();
+      setupForWhomToggle();
+      setupPlayerAutocomplete();
+      setupQuickDateButtons();
+      setupUrgencyButtons();
+      setupStatusButtons();
+      setupReachOutChips();
+      setupDueDateWatch();
+      setupCompletedCheckbox();
+      setupPickedUpCheckbox();
+      setupDirtyTracking();
+
+      // Load preloaded data or set defaults
+      if (preloadedData && Object.keys(preloadedData).length > 0) {
+        populateForm(preloadedData);
+        updatePageTitle(true);
+      } else {
+        setDefaults();
+        updatePageTitle(false);
+      }
+    }
+
+    function populateEmployees() {
+      const select = document.getElementById('assigned_employee');
+      if (EMPLOYEES && EMPLOYEES.length > 0) {
+        EMPLOYEES.forEach(emp => {
+          const option = document.createElement('option');
+          const value = typeof emp === 'string' ? emp : (emp.name || emp.id || emp);
+          option.value = value;
+          option.textContent = value;
+          select.appendChild(option);
+        });
+      }
+    }
+
+    function setDefaults() {
+      // Set default due date to today
+      document.getElementById('due_date').value = formatDateForInput(new Date());
+      updateDueDateHelper();
+      formState.selectedUrgency = 'Normal';
+      formState.selectedStatus = 'New';
+      formState.isForPlayer = true;
+    }
+
+    function updatePageTitle(isEdit) {
+      const title = document.getElementById('pageTitle');
+      const saveBtn = document.getElementById('saveBtn');
+      if (isEdit && assignmentId) {
+        title.textContent = `Edit Task #${assignmentId}`;
+        saveBtn.textContent = 'Update Task';
+      } else {
+        title.textContent = 'New Task';
+        saveBtn.textContent = 'Save Task';
+      }
+    }
+
+    /* ========================================
+       DIRTY STATE TRACKING
+       ======================================== */
+
+    function setupDirtyTracking() {
+      const inputs = document.querySelectorAll('input, textarea, select');
+      inputs.forEach(input => {
+        input.addEventListener('change', () => { formState.isDirty = true; });
+        input.addEventListener('input', () => { formState.isDirty = true; });
+      });
+    }
+
+    /* ========================================
+       POPULATE FORM (Edit Mode)
+       ======================================== */
+
+    function populateForm(data) {
+      // Text fields
+      setFieldValue('task_summary', data.task_summary);
+      setFieldValue('details', data.details);
+      setFieldValue('contact_information', data.contact_information);
+      setFieldValue('source', data.source);
+
+      // Date fields
+      if (data.due_date) {
+        document.getElementById('due_date').value = formatDateForInput(new Date(data.due_date));
+        updateDueDateHelper();
+      }
+      if (data.pickup_date) {
+        document.getElementById('pickup_date').value = formatDateForInput(new Date(data.pickup_date));
+      }
+
+      // Checkboxes
+      document.getElementById('ok_to_text').checked = Boolean(data.ok_to_text);
+      document.getElementById('expecting_callback').checked = Boolean(data.expecting_callback);
+      document.getElementById('picked_up').checked = Boolean(data.picked_up);
+      document.getElementById('completed').checked = Boolean(data.completed);
+
+      // For whom toggle (player vs store)
+      if (data.preferred_name_id === 'STORE_TASK' || !data.preferred_name_id) {
+        setForWhom('store');
+      } else {
+        setForWhom('player');
+        document.getElementById('preferred_name_id').value = data.preferred_name_id;
+        document.getElementById('playerSearch').value = data.preferred_name_id;
+      }
+
+      // Urgency
+      if (data.urgency) {
+        selectButtonInGroup('urgencyGroup', data.urgency);
+        formState.selectedUrgency = data.urgency;
+      }
+
+      // Status
+      if (data.status) {
+        selectButtonInGroup('statusGroup', data.status);
+        formState.selectedStatus = data.status;
+      }
+
+      // Assigned employee
+      if (data.assigned_employee) {
+        document.getElementById('assigned_employee').value = data.assigned_employee;
+      }
+
+      // How did they reach out
+      if (data.how_did_they_reach_out) {
+        selectChip('reachOutChips', data.how_did_they_reach_out);
+        formState.selectedReachOut = data.how_did_they_reach_out;
+        document.getElementById('how_did_they_reach_out').value = data.how_did_they_reach_out;
+      }
+
+      // Meta fields
+      showMetaSection(data);
+
+      // Update header badges
+      updateHeaderBadges(data);
+    }
+
+    function setFieldValue(id, value) {
+      const el = document.getElementById(id);
+      if (el && value !== undefined && value !== null) {
+        el.value = value;
+      }
+    }
+
+    function showMetaSection(data) {
+      const section = document.getElementById('metaSection');
+      let hasData = false;
+
+      if (assignmentId) {
+        document.getElementById('display_assignment_id').textContent = assignmentId;
+        document.getElementById('metaAssignmentId').style.display = '';
+        hasData = true;
+      }
+
+      if (data.created_at) {
+        document.getElementById('display_created_at').textContent = formatDisplayDate(data.created_at);
+        hasData = true;
+      }
+
+      if (data.created_by) {
+        document.getElementById('display_created_by').textContent = data.created_by;
+        hasData = true;
+      }
+
+      if (data.completed_at) {
+        document.getElementById('display_completed_at').textContent = formatDisplayDate(data.completed_at);
+        document.getElementById('metaCompletedAt').style.display = '';
+        hasData = true;
+      }
+
+      section.style.display = hasData ? '' : 'none';
+    }
+
+    function updateHeaderBadges(data) {
+      const container = document.getElementById('headerBadges');
+      container.innerHTML = '';
+
+      if (data.completed) {
+        container.innerHTML += '<span class="badge badge-completed"><svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>Completed</span>';
+      }
+
+      if (data.picked_up) {
+        container.innerHTML += '<span class="badge badge-picked-up"><svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Picked Up</span>';
+      }
+
+      if (data.urgency === 'Critical') {
+        container.innerHTML += '<span class="badge badge-critical"><svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Critical</span>';
+      }
+    }
+
+    /* ========================================
+       TASK SUMMARY CHIPS
+       ======================================== */
+
+    function setupTaskChips() {
+      const container = document.getElementById('taskChips');
+      container.addEventListener('click', function(e) {
+        if (e.target.classList.contains('chip')) {
+          const value = e.target.dataset.value;
+          const input = document.getElementById('task_summary');
+          
+          // If input is empty or matches another chip, replace
+          const currentVal = input.value.trim();
+          const isChipValue = Array.from(container.querySelectorAll('.chip')).some(c => c.dataset.value === currentVal);
+          
+          if (!currentVal || isChipValue) {
+            input.value = value;
+          } else {
+            // Append to existing
+            input.value = currentVal + ' - ' + value;
+          }
+
+          // Update active state
+          container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+          e.target.classList.add('active');
+
+          clearFieldError('task_summary');
+          input.focus();
+        }
+      });
+    }
+
+    /* ========================================
+       FOR WHOM TOGGLE
+       ======================================== */
+
+    function setupForWhomToggle() {
+      const container = document.getElementById('forWhomToggle');
+      container.addEventListener('click', function(e) {
+        if (e.target.classList.contains('toggle-btn')) {
+          const value = e.target.dataset.value;
+          setForWhom(value);
+        }
+      });
+    }
+
+    function setForWhom(value) {
+      const container = document.getElementById('forWhomToggle');
+      const playerGroup = document.getElementById('playerPickerGroup');
+      const contactSection = document.getElementById('contactSection');
+
+      container.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === value);
+      });
+
+      formState.isForPlayer = (value === 'player');
+
+      if (formState.isForPlayer) {
+        playerGroup.style.display = '';
+        contactSection.classList.remove('de-emphasized');
+      } else {
+        playerGroup.style.display = 'none';
+        document.getElementById('preferred_name_id').value = 'STORE_TASK';
+        document.getElementById('playerSearch').value = '';
+        contactSection.classList.add('de-emphasized');
+      }
+
+      clearFieldError('preferred_name_id');
+    }
+
+    /* ========================================
+       PLAYER AUTOCOMPLETE
+       ======================================== */
+
+    function setupPlayerAutocomplete() {
+      const input = document.getElementById('playerSearch');
+      const dropdown = document.getElementById('playerDropdown');
+      const hiddenInput = document.getElementById('preferred_name_id');
+
+      input.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        hiddenInput.value = '';
+
+        if (query.length < 1) {
+          hideDropdown();
+          return;
+        }
+
+        // Filter names with fuzzy matching
+        formState.filteredNames = PREFERRED_NAMES.filter(name => {
+          const nameStr = typeof name === 'string' ? name : (name.name || name.preferred_name || '');
+          return nameStr.toLowerCase().includes(query);
+        }).slice(0, 12);
+
+        if (formState.filteredNames.length === 0) {
+          dropdown.innerHTML = '<div class="autocomplete-empty">No matches found — try a different spelling</div>';
+        } else {
+          dropdown.innerHTML = formState.filteredNames.map((name, i) => {
+            const nameStr = typeof name === 'string' ? name : (name.name || name.preferred_name || name);
+            const highlighted = highlightMatch(nameStr, query);
+            return `<div class="autocomplete-item" data-index="${i}" data-value="${nameStr}">${highlighted}</div>`;
+          }).join('');
+        }
+
+        formState.highlightedIndex = -1;
+        showDropdown();
+      });
+
+      input.addEventListener('keydown', function(e) {
+        if (!dropdown.classList.contains('show')) return;
+
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          formState.highlightedIndex = Math.min(formState.highlightedIndex + 1, items.length - 1);
+          updateHighlight(items);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          formState.highlightedIndex = Math.max(formState.highlightedIndex - 1, 0);
+          updateHighlight(items);
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (formState.highlightedIndex >= 0 && items[formState.highlightedIndex]) {
+            selectPlayer(items[formState.highlightedIndex].dataset.value);
+          }
+        } else if (e.key === 'Escape') {
+          hideDropdown();
+        }
+      });
+
+      dropdown.addEventListener('click', function(e) {
+        const item = e.target.closest('.autocomplete-item');
+        if (item) {
+          selectPlayer(item.dataset.value);
+        }
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.autocomplete-container')) {
+          hideDropdown();
+        }
+      });
+    }
+
+    function highlightMatch(text, query) {
+      const lowerText = text.toLowerCase();
+      const idx = lowerText.indexOf(query.toLowerCase());
+      if (idx === -1) return text;
+      
+      const before = text.slice(0, idx);
+      const match = text.slice(idx, idx + query.length);
+      const after = text.slice(idx + query.length);
+      
+      return `${before}<strong style="color: var(--accent-primary)">${match}</strong>${after}`;
+    }
+
+    function showDropdown() {
+      document.getElementById('playerDropdown').classList.add('show');
+    }
+
+    function hideDropdown() {
+      document.getElementById('playerDropdown').classList.remove('show');
+      formState.highlightedIndex = -1;
+    }
+
+    function updateHighlight(items) {
+      items.forEach((item, i) => {
+        item.classList.toggle('highlighted', i === formState.highlightedIndex);
+      });
+      
+      // Scroll highlighted item into view
+      if (formState.highlightedIndex >= 0 && items[formState.highlightedIndex]) {
+        items[formState.highlightedIndex].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function selectPlayer(value) {
+      document.getElementById('playerSearch').value = value;
+      document.getElementById('preferred_name_id').value = value;
+      hideDropdown();
+      clearFieldError('preferred_name_id');
+    }
+
+    /* ========================================
+       QUICK DATE BUTTONS
+       ======================================== */
+
+    function setupQuickDateButtons() {
+      const buttons = document.querySelectorAll('.quick-date-btn');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', function() {
+          const offset = this.dataset.offset;
+          const date = new Date();
+
+          if (offset === 'friday') {
+            // Find next Friday (or Saturday for store open day)
+            const day = date.getDay();
+            const daysUntilFriday = (5 - day + 7) % 7 || 7;
+            date.setDate(date.getDate() + daysUntilFriday);
+          } else {
+            date.setDate(date.getDate() + parseInt(offset, 10));
+          }
+
+          document.getElementById('due_date').value = formatDateForInput(date);
+          updateDueDateHelper();
+          clearFieldError('due_date');
+        });
+      });
+    }
+
+    function setupDueDateWatch() {
+      document.getElementById('due_date').addEventListener('change', function() {
+        updateDueDateHelper();
+        clearFieldError('due_date');
+      });
+    }
+
+    function updateDueDateHelper() {
+      const input = document.getElementById('due_date');
+      const helper = document.getElementById('dueDateHelper');
+
+      if (!input.value) {
+        helper.textContent = '';
+        helper.className = 'helper-text';
+        return;
+      }
+
+      const dueDate = new Date(input.value + 'T00:00:00');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const diffDays = Math.floor((dueDate - today) / (1000 * 60 * 60 * 24));
+      const dayName = dueDate.toLocaleDateString('en-US', { weekday: 'long' });
+
+      if (diffDays === 0) {
+        helper.textContent = 'Due today — thanks for jumping on this!';
+        helper.className = 'helper-text due-today';
+      } else if (diffDays === 1) {
+        helper.textContent = 'Due tomorrow (' + dayName + ')';
+        helper.className = 'helper-text';
+      } else if (diffDays < 0) {
+        helper.textContent = `⚠️ Overdue by ${Math.abs(diffDays)} day(s)`;
+        helper.className = 'helper-text overdue';
+      } else if (diffDays <= 7) {
+        helper.textContent = `Due in ${diffDays} days (${dayName})`;
+        helper.className = 'helper-text';
+      } else {
+        helper.textContent = `Due ${dayName}, ${dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+        helper.className = 'helper-text';
+      }
+    }
+
+    /* ========================================
+       URGENCY & STATUS BUTTONS
+       ======================================== */
+
+    function setupUrgencyButtons() {
+      const container = document.getElementById('urgencyGroup');
+      container.addEventListener('click', function(e) {
+        if (e.target.classList.contains('btn')) {
+          container.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          formState.selectedUrgency = e.target.dataset.value;
+          clearFieldError('urgency');
+          updateUrgencyBadge();
+        }
+      });
+    }
+
+    function setupStatusButtons() {
+      const container = document.getElementById('statusGroup');
+      container.addEventListener('click', function(e) {
+        if (e.target.classList.contains('btn')) {
+          container.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          formState.selectedStatus = e.target.dataset.value;
+          clearFieldError('status');
+
+          // If completed status selected, check the completed checkbox
+          if (formState.selectedStatus === 'Completed') {
+            document.getElementById('completed').checked = true;
+            updateCompletedBadge();
+          }
+        }
+      });
+    }
+
+    function selectButtonInGroup(groupId, value) {
+      const container = document.getElementById(groupId);
+      container.querySelectorAll('.btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === value);
+      });
+    }
+
+    function updateUrgencyBadge() {
+      const badges = document.getElementById('headerBadges');
+      const existingCritical = badges.querySelector('.badge-critical');
+
+      if (formState.selectedUrgency === 'Critical' && !existingCritical) {
+        badges.insertAdjacentHTML('beforeend', '<span class="badge badge-critical"><svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Critical</span>');
+      } else if (formState.selectedUrgency !== 'Critical' && existingCritical) {
+        existingCritical.remove();
+      }
+    }
+
+    /* ========================================
+       REACH OUT CHIPS
+       ======================================== */
+
+    function setupReachOutChips() {
+      const container = document.getElementById('reachOutChips');
+      container.addEventListener('click', function(e) {
+        if (e.target.classList.contains('chip')) {
+          const value = e.target.dataset.value;
+
+          // Toggle selection
+          if (e.target.classList.contains('active')) {
+            e.target.classList.remove('active');
+            formState.selectedReachOut = '';
+            document.getElementById('how_did_they_reach_out').value = '';
+          } else {
+            container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            e.target.classList.add('active');
+            formState.selectedReachOut = value;
+            document.getElementById('how_did_they_reach_out').value = value;
+          }
+        }
+      });
+    }
+
+    function selectChip(containerId, value) {
+      const container = document.getElementById(containerId);
+      container.querySelectorAll('.chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.value === value);
+      });
+    }
+
+    /* ========================================
+       COMPLETED & PICKED UP CHECKBOXES
+       ======================================== */
+
+    function setupCompletedCheckbox() {
+      document.getElementById('completed').addEventListener('change', function() {
+        updateCompletedBadge();
+      });
+    }
+
+    function updateCompletedBadge() {
+      const badges = document.getElementById('headerBadges');
+      const existingBadge = badges.querySelector('.badge-completed');
+      const isChecked = document.getElementById('completed').checked;
+
+      if (isChecked && !existingBadge) {
+        badges.insertAdjacentHTML('afterbegin', '<span class="badge badge-completed"><svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>Completed</span>');
+      } else if (!isChecked && existingBadge) {
+        existingBadge.remove();
+      }
+    }
+
+    function setupPickedUpCheckbox() {
+      document.getElementById('picked_up').addEventListener('change', function() {
+        const badges = document.getElementById('headerBadges');
+        const existingBadge = badges.querySelector('.badge-picked-up');
+
+        if (this.checked && !existingBadge) {
+          badges.insertAdjacentHTML('beforeend', '<span class="badge badge-picked-up"><svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Picked Up</span>');
+          
+          // Auto-set pickup date to today if not set
+          const pickupDate = document.getElementById('pickup_date');
+          if (!pickupDate.value) {
+            pickupDate.value = formatDateForInput(new Date());
+          }
+        } else if (!this.checked && existingBadge) {
+          existingBadge.remove();
+        }
+
+        // Validate pickup date
+        if (this.checked && !document.getElementById('pickup_date').value) {
+          showFieldError('pickup', 'Please add a pickup date since the item has been picked up.');
+        } else {
+          clearFieldError('pickup');
+        }
+      });
+    }
+
+    /* ========================================
+       VALIDATION
+       ======================================== */
+
+    function validateForm() {
+      let isValid = true;
+      clearAllErrors();
+
+      // Required: task_summary
+      const summary = document.getElementById('task_summary').value.trim();
+      if (!summary) {
+        showFieldError('task_summary', 'Please add a quick summary of what needs done.');
+        isValid = false;
+        document.getElementById('task_summary').focus();
+      }
+
+      // Required: due_date
+      if (!document.getElementById('due_date').value) {
+        showFieldError('due_date', 'Please add a due date so this doesn\'t get lost.');
+        isValid = false;
+      }
+
+      // Required: urgency (should always have one selected, but just in case)
+      if (!formState.selectedUrgency) {
+        showFieldError('urgency', 'Please select an urgency level.');
+        isValid = false;
+      }
+
+      // Required: status
+      if (!formState.selectedStatus) {
+        showFieldError('status', 'Please select a status.');
+        isValid = false;
+      }
+
+      // Required: preferred_name_id when "For a Player"
+      if (formState.isForPlayer && !document.getElementById('preferred_name_id').value) {
+        showFieldError('preferred_name_id', 'Please select a player or switch to "For the Store".');
+        isValid = false;
+      }
+
+      // If picked_up is true, require pickup_date
+      if (document.getElementById('picked_up').checked && !document.getElementById('pickup_date').value) {
+        showFieldError('pickup', 'Please add a pickup date since the item has been picked up.');
+        isValid = false;
+      }
+
+      return isValid;
+    }
+
+    function showFieldError(fieldName, message) {
+      const errorEl = document.getElementById(fieldName + '_error');
+      if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.classList.add('show');
+      }
+
+      const input = document.getElementById(fieldName);
+      if (input) {
+        input.closest('.form-group')?.classList.add('has-error');
+      }
+    }
+
+    function clearFieldError(fieldName) {
+      const errorEl = document.getElementById(fieldName + '_error');
+      if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.classList.remove('show');
+      }
+
+      const input = document.getElementById(fieldName);
+      if (input) {
+        input.closest('.form-group')?.classList.remove('has-error');
+      }
+    }
+
+    function clearAllErrors() {
+      document.querySelectorAll('.field-error').forEach(el => {
+        el.textContent = '';
+        el.classList.remove('show');
+      });
+      document.querySelectorAll('.has-error').forEach(el => {
+        el.classList.remove('has-error');
+      });
+    }
+
+    /* ========================================
+       COLLECT FORM DATA
+       ======================================== */
+
+    function collectFormData() {
+      const isCompleted = document.getElementById('completed').checked;
+      
+      return {
+        assignment_id: assignmentId || null,
+        created_at: preloadedData?.created_at || new Date().toISOString(),
+        completed: isCompleted,
+        completed_at: isCompleted
+          ? (preloadedData?.completed_at || new Date().toISOString())
+          : null,
+        status: formState.selectedStatus,
+        created_by: preloadedData?.created_by || null,
+        task_summary: document.getElementById('task_summary').value.trim(),
+        details: document.getElementById('details').value.trim(),
+        urgency: formState.selectedUrgency,
+        assigned_employee: document.getElementById('assigned_employee').value || null,
+        due_date: document.getElementById('due_date').value || null,
+        preferred_name_id: formState.isForPlayer
+          ? document.getElementById('preferred_name_id').value
+          : 'STORE_TASK',
+        how_did_they_reach_out: document.getElementById('how_did_they_reach_out').value || null,
+        contact_information: document.getElementById('contact_information').value.trim() || null,
+        ok_to_text: document.getElementById('ok_to_text').checked,
+        expecting_callback: document.getElementById('expecting_callback').checked,
+        pickup_date: document.getElementById('pickup_date').value || null,
+        picked_up: document.getElementById('picked_up').checked,
+        source: document.getElementById('source').value.trim() || null
+      };
+    }
+
+    /* ========================================
+       SAVE & CANCEL
+       ======================================== */
+
+    function handleSave() {
+      if (!validateForm()) {
+        showFooterMessage('Please fix the highlighted fields above.', 'error');
+        return;
+      }
+
+      const formData = collectFormData();
+
+      showLoading(true);
+      document.getElementById('saveBtn').disabled = true;
+      showFooterMessage('Saving...', '');
+
+      google.script.run
+        .withSuccessHandler(onSaveSuccess)
+        .withFailureHandler(onSaveFailure)
+        .saveSingleAssignment(formData);
+    }
+
+    function onSaveSuccess(result) {
+      showLoading(false);
+      document.getElementById('saveBtn').disabled = false;
+      formState.isDirty = false;
+      showFooterMessage('✓ Saved! Future-you thanks you.', 'success');
+
+      // Auto-close after delay for new tasks
+      if (!assignmentId) {
+        setTimeout(() => google.script.host.close(), 1800);
+      }
+    }
+
+    function onSaveFailure(error) {
+      showLoading(false);
+      document.getElementById('saveBtn').disabled = false;
+      showFooterMessage('Something went wrong: ' + (error.message || error), 'error');
+    }
+
+    function handleCancel() {
+      if (formState.isDirty) {
+        // Could add confirmation dialog here
+      }
+      google.script.host.close();
+    }
+
+    function showFooterMessage(message, type) {
+      const el = document.getElementById('footerMessage');
+      el.textContent = message;
+      el.className = 'footer-message ' + (type || '');
+    }
+
+    function showLoading(show) {
+      document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
+    }
+
+    /* ========================================
+       UTILITY FUNCTIONS
+       ======================================== */
+
+    function formatDateForInput(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatDisplayDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        });
+      } catch (e) {
+        return dateStr;
+      }
+    }
+  </script>
+</body>
+</html>

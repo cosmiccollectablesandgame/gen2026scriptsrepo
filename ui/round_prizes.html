@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; font-size: 14px; }
+    h2 { color: #1a73e8; }
+    .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
+    .tab { padding: 10px 20px; cursor: pointer; border: none; background: none; font-weight: 600; color: #666; }
+    .tab.active { color: #1a73e8; border-bottom: 3px solid #1a73e8; }
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; }
+    .info-box { background: #e8f4fd; padding: 12px; border-radius: 4px; margin-top: 15px; font-size: 13px; }
+    .preview-list { margin-top: 15px; }
+    .prize-item { padding: 10px; background: #f8f9fa; border-radius: 4px; margin-bottom: 8px; }
+    .buttons { margin-top: 20px; text-align: right; }
+    button { padding: 10px 20px; margin-left: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-danger { background: #ea4335; color: white; }
+    #status { margin-top: 15px; padding: 10px; border-radius: 4px; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h2>Commander Round Prizes</h2>
+
+  <div class="tabs">
+    <button class="tab active" onclick="selectRound(1)">Round 1</button>
+    <button class="tab" onclick="selectRound(2)">Round 2</button>
+    <button class="tab" onclick="selectRound(3)">Round 3</button>
+  </div>
+
+  <label for="eventSelect">Select Event</label>
+  <select id="eventSelect">
+    <option value="">Loading...</option>
+  </select>
+
+  <div id="roundInfo" class="info-box">
+    <strong id="roundDesc"></strong>
+  </div>
+
+  <div id="previewSection" class="hidden">
+    <h3>Prize Allocations</h3>
+    <div id="previewList" class="preview-list"></div>
+  </div>
+
+  <div id="status"></div>
+
+  <div class="buttons">
+    <button class="btn-primary" onclick="generatePreview()">Generate Preview</button>
+    <button id="commitBtn" class="btn-danger" onclick="commitRound()" disabled>Commit Round</button>
+  </div>
+
+  <script>
+    let currentRound = 1;
+    let currentPreview = null;
+
+    const roundDescriptions = {
+      1: 'Round 1: Award to 1st place',
+      2: 'Round 2: Award to 1st and 4th place',
+      3: 'Round 3: Award to 1st place'
+    };
+
+    updateRoundDesc();
+    google.script.run.withSuccessHandler(populateEvents).listEventTabs();
+
+    function populateEvents(events) {
+      const select = document.getElementById('eventSelect');
+      select.innerHTML = '<option value="">Select event...</option>';
+      events.forEach(event => {
+        select.innerHTML += `<option value="${event}">${event}</option>`;
+      });
+    }
+
+    function selectRound(round) {
+      currentRound = round;
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      event.target.classList.add('active');
+      updateRoundDesc();
+      document.getElementById('previewSection').className = 'hidden';
+      document.getElementById('commitBtn').disabled = true;
+    }
+
+    function updateRoundDesc() {
+      document.getElementById('roundDesc').textContent = roundDescriptions[currentRound];
+    }
+
+    function generatePreview() {
+      const eventId = document.getElementById('eventSelect').value;
+      if (!eventId) {
+        showStatus('Please select an event', 'error');
+        return;
+      }
+
+      showStatus('Generating preview...', 'info');
+
+      google.script.run
+        .withSuccessHandler(onPreviewSuccess)
+        .withFailureHandler(onFailure)
+        .previewCommanderRound(eventId, currentRound);
+    }
+
+    function onPreviewSuccess(preview) {
+      currentPreview = preview;
+
+      const list = document.getElementById('previewList');
+      list.innerHTML = '';
+
+      preview.allocations.forEach(alloc => {
+        list.innerHTML += `<div class="prize-item">
+          <strong>${alloc.preferredName}</strong> → ${alloc.name} (${alloc.level}, $${alloc.cogs.toFixed(2)})
+        </div>`;
+      });
+
+      document.getElementById('previewSection').className = '';
+      document.getElementById('commitBtn').disabled = false;
+      showStatus(`✓ Preview generated: ${preview.allocations.length} prizes`, 'success');
+    }
+
+    function commitRound() {
+      if (!currentPreview) return;
+
+      if (!confirm(`Commit Round ${currentRound} prizes?`)) return;
+
+      showStatus('Committing...', 'info');
+
+      google.script.run
+        .withSuccessHandler(onCommitSuccess)
+        .withFailureHandler(onFailure)
+        .commitCommanderRound(currentPreview.eventId, currentRound, currentPreview.hash);
+    }
+
+    function onCommitSuccess(result) {
+      showStatus(`✓ Round ${currentRound} committed! Allocated ${result.allocated} prizes.`, 'success');
+      document.getElementById('commitBtn').disabled = true;
+    }
+
+    function onFailure(error) {
+      showStatus(`Error: ${error.message}`, 'error');
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+    }
+  </script>
+</body>
+</html>

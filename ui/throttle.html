@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; font-size: 14px; }
+    h2 { color: #1a73e8; }
+    .param-group { margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; }
+    .param-group h4 { margin-top: 0; color: #333; }
+    label { display: block; margin-top: 10px; font-weight: 600; font-size: 13px; }
+    input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    .hint { font-size: 11px; color: #666; margin-top: 3px; }
+    .buttons { margin-top: 20px; text-align: right; }
+    button { padding: 10px 20px; margin-left: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    #status { margin-top: 15px; padding: 10px; border-radius: 4px; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h2>Prize Throttle Switchboard</h2>
+
+  <div class="param-group">
+    <h4>RL Budget</h4>
+    <label for="rlPercentage">RL Percentage</label>
+    <input type="number" id="rlPercentage" step="0.01" min="0" max="1">
+    <div class="hint">Percentage of eligible net for prize budget (e.g., 0.95 = 95%)</div>
+  </div>
+
+  <div class="param-group">
+    <h4>EF Clamp</h4>
+    <label for="efMin">EF Clamp Min</label>
+    <input type="number" id="efMin" step="0.01" min="0.5" max="2.0">
+    <div class="hint">Minimum EV factor (0.80–2.00)</div>
+
+    <label for="efMax">EF Clamp Max</label>
+    <input type="number" id="efMax" step="0.01" min="1.0" max="3.0">
+    <div class="hint">Maximum EV factor (1.00–3.00)</div>
+  </div>
+
+  <div class="param-group">
+    <h4>Consolation & Night Mode</h4>
+    <label for="consolationRatio">Consolation L1 Ratio</label>
+    <input type="number" id="consolationRatio" step="0.01" min="0" max="1">
+    <div class="hint">Ratio of L1 to L0 consolation prizes (e.g., 0.20 = 20% L1)</div>
+
+    <label for="nightMode">Night Mode Enabled</label>
+    <select id="nightMode">
+      <option value="FALSE">No</option>
+      <option value="TRUE">Yes</option>
+    </select>
+
+    <label for="nightProfile">Night Mode Profile</label>
+    <select id="nightProfile">
+      <option value="STANDARD">Standard</option>
+      <option value="ENHANCED">Enhanced</option>
+    </select>
+  </div>
+
+  <div class="param-group">
+    <h4>Bonus Points</h4>
+    <label for="bpPerEvent">BP Cap Per Event</label>
+    <input type="number" id="bpPerEvent" min="0" max="50">
+    <div class="hint">Max BP a player can earn per event (0–50)</div>
+
+    <label for="bpGlobal">BP Global Cap</label>
+    <input type="number" id="bpGlobal" min="0" max="200">
+    <div class="hint">Max BP a player can hold (0–200)</div>
+  </div>
+
+  <div class="param-group">
+    <h4>Keys</h4>
+    <label for="rainbowRate">Rainbow Conversion Rate</label>
+    <input type="text" id="rainbowRate" placeholder="3:1">
+    <div class="hint">Format: "X:1" (e.g., "3:1" means 3 of each color = 1 rainbow)</div>
+  </div>
+
+  <div id="status"></div>
+
+  <div class="buttons">
+    <button class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+    <button class="btn-primary" onclick="saveChanges()">Save Changes</button>
+  </div>
+
+  <script>
+    // Load current throttle values
+    google.script.run.withSuccessHandler(populateFields).getThrottleKV();
+
+    function populateFields(throttle) {
+      document.getElementById('rlPercentage').value = throttle.RL_Percentage || '0.95';
+      document.getElementById('efMin').value = throttle.EF_Clamp_Min || '0.80';
+      document.getElementById('efMax').value = throttle.EF_Clamp_Max || '2.25';
+      document.getElementById('consolationRatio').value = throttle.Consolation_L1_Ratio || '0.20';
+      document.getElementById('nightMode').value = throttle.Night_Mode_Enabled || 'FALSE';
+      document.getElementById('nightProfile').value = throttle.Night_Mode_Profile || 'STANDARD';
+      document.getElementById('bpPerEvent').value = throttle.BP_Cap_Per_Event || '20';
+      document.getElementById('bpGlobal').value = throttle.BP_Global_Cap || '100';
+      document.getElementById('rainbowRate').value = throttle.Rainbow_Rate || '3:1';
+    }
+
+    function saveChanges() {
+      const updates = {
+        RL_Percentage: document.getElementById('rlPercentage').value,
+        EF_Clamp_Min: document.getElementById('efMin').value,
+        EF_Clamp_Max: document.getElementById('efMax').value,
+        Consolation_L1_Ratio: document.getElementById('consolationRatio').value,
+        Night_Mode_Enabled: document.getElementById('nightMode').value,
+        Night_Mode_Profile: document.getElementById('nightProfile').value,
+        BP_Cap_Per_Event: document.getElementById('bpPerEvent').value,
+        BP_Global_Cap: document.getElementById('bpGlobal').value,
+        Rainbow_Rate: document.getElementById('rainbowRate').value
+      };
+
+      showStatus('Saving...', 'info');
+
+      google.script.run
+        .withSuccessHandler(() => {
+          showStatus('✓ Throttle settings saved', 'success');
+          setTimeout(() => google.script.host.close(), 1500);
+        })
+        .withFailureHandler(onFailure)
+        .setThrottleKV(updates);
+    }
+
+    function onFailure(error) {
+      showStatus(`Error: ${error.message}`, 'error');
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+    }
+  </script>
+</body>
+</html>

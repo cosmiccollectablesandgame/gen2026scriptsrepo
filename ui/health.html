@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; font-size: 14px; }
+    h2 { color: #1a73e8; margin-top: 0; }
+    .gate-list { margin-top: 20px; }
+    .gate-item { padding: 15px; margin-bottom: 10px; border-radius: 4px; border-left: 4px solid #ccc; }
+    .gate-item.pass { background: #d4edda; border-color: #28a745; }
+    .gate-item.fail { background: #f8d7da; border-color: #dc3545; }
+    .gate-header { display: flex; justify-content: space-between; align-items: center; }
+    .gate-name { font-weight: 600; font-size: 15px; }
+    .gate-status { padding: 4px 10px; border-radius: 3px; font-size: 12px; font-weight: 600; }
+    .gate-status.pass { background: #28a745; color: white; }
+    .gate-status.fail { background: #dc3545; color: white; }
+    .gate-details { margin-top: 8px; font-size: 13px; color: #666; }
+    .buttons { margin-top: 20px; text-align: right; }
+    button { padding: 10px 20px; margin-left: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px; }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-success:hover { background: #218838; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .summary { padding: 15px; background: #e8f4fd; border-radius: 4px; margin-bottom: 20px; }
+    .summary.healthy { background: #d4edda; }
+    .summary.unhealthy { background: #fff3cd; }
+    #status { margin-top: 15px; padding: 10px; border-radius: 4px; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h2>Build / Repair - Ship-Gates Health</h2>
+  <div id="summary" class="summary">
+    <strong>Status:</strong> <span id="summaryText">Running health check...</span>
+  </div>
+  <div id="gateList" class="gate-list"></div>
+  <div id="status"></div>
+  <div class="buttons">
+    <button class="btn-secondary" onclick="google.script.host.close()">Close</button>
+    <button class="btn-primary" onclick="runHealthCheck()">Re-test</button>
+    <button class="btn-success" onclick="runAutoFixAll()">Auto-Fix All Issues</button>
+  </div>
+
+  <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
+
+  <h3 style="color: #1a73e8; font-size: 16px;">Additional Maintenance</h3>
+  <div style="margin-top: 15px;">
+    <button class="btn-primary" onclick="migrateLegacyTabs()" style="margin: 5px;">Migrate Legacy Event Tabs</button>
+    <button class="btn-primary" onclick="createScoreboardTemplate()" style="margin: 5px;">Create Scoreboard Template</button>
+    <button class="btn-primary" onclick="normalizeThrottleDefaults()" style="margin: 5px;">Normalize Throttle Defaults</button>
+  </div>
+  <p style="font-size: 12px; color: #666; margin-top: 10px;">
+    <strong>Legacy Migration:</strong> Converts old event tabs to canonical v7.9 format<br>
+    <strong>Scoreboard Template:</strong> Creates a match-result tracking sheet<br>
+    <strong>Throttle Defaults:</strong> Resets missing Prize_Throttle parameters to defaults
+  </p>
+
+  <script>
+    // Run health check on load
+    runHealthCheck();
+    function runHealthCheck() {
+      document.getElementById('summaryText').textContent = 'Running health check...';
+      document.getElementById('gateList').innerHTML = '<p>Testing Ship-Gates A-H...</p>';
+      google.script.run
+        .withSuccessHandler(displayResults)
+        .withFailureHandler(onFailure)
+        .shipGatesHealth();
+    }
+    function displayResults(results) {
+      const passCount = results.filter(r => r.pass).length;
+      const totalCount = results.length;
+      const isHealthy = passCount === totalCount;
+      // Update summary
+      const summary = document.getElementById('summary');
+      summary.className = isHealthy ? 'summary healthy' : 'summary unhealthy';
+      document.getElementById('summaryText').innerHTML =
+        `<strong>${passCount}/${totalCount}</strong> gates passed. ${isHealthy ? '✓ System Healthy' : '⚠ Issues Found'}`;
+      // Display gates
+      const gateList = document.getElementById('gateList');
+      gateList.innerHTML = '';
+      results.forEach(gate => {
+        const gateDiv = document.createElement('div');
+        gateDiv.className = `gate-item ${gate.pass ? 'pass' : 'fail'}`;
+        gateDiv.innerHTML = `
+          <div class="gate-header">
+            <div class="gate-name">Gate ${gate.gate}: ${gate.name}</div>
+            <div class="gate-status ${gate.pass ? 'pass' : 'fail'}">${gate.pass ? 'PASS' : 'FAIL'}</div>
+          </div>
+          <div class="gate-details">${gate.details}</div>
+          ${!gate.pass ? `<button class="btn-success" style="margin-top: 10px;" onclick="fixGate('${gate.gate}')">Fix Gate ${gate.gate}</button>` : ''}
+        `;
+        gateList.appendChild(gateDiv);
+      });
+      if (isHealthy) {
+        showStatus('✓ All Ship-Gates passed. System is healthy.', 'success');
+      }
+    }
+    function fixGate(gate) {
+      showStatus(`Fixing Gate ${gate}...`, 'info');
+      google.script.run
+        .withSuccessHandler(() => {
+          showStatus(`✓ Gate ${gate} fixed. Re-testing...`, 'success');
+          setTimeout(runHealthCheck, 500);
+        })
+        .withFailureHandler(onFailure)
+        .runAutoFix(gate);
+    }
+    function runAutoFixAll() {
+      if (!confirm('Run auto-fix for all failed gates?\n\nThis will:\n- Create missing sheets\n- Repair headers\n- Reset invalid configs\n- Clean stale data\n\nContinue?')) {
+        return;
+      }
+      showStatus('Running auto-fix for all gates...', 'info');
+      // Fix gates sequentially: A, B, C, D, E, F, G, H
+      const gates = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      let index = 0;
+      function fixNext() {
+        if (index >= gates.length) {
+          showStatus('✓ Auto-fix complete. Re-testing...', 'success');
+          setTimeout(runHealthCheck, 1000);
+          return;
+        }
+        const gate = gates[index];
+        index++;
+        google.script.run
+          .withSuccessHandler(() => fixNext())
+          .withFailureHandler(() => fixNext()) // Continue even if one fails
+          .runAutoFix(gate);
+      }
+      fixNext();
+    }
+    function onFailure(error) {
+      showStatus(`Error: ${error.message}`, 'error');
+    }
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+    }
+
+    function migrateLegacyTabs() {
+      if (!confirm('Migrate legacy event tabs to canonical v7.9 format?\n\nThis will:\n- Rename non-standard columns\n- Add missing headers\n- Preserve all data\n\nContinue?')) {
+        return;
+      }
+
+      showStatus('Migrating legacy event tabs...', 'info');
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          showStatus(`✓ Migration complete: ${result.migrated} tabs migrated, ${result.skipped} skipped.`, 'success');
+        })
+        .withFailureHandler(onFailure)
+        .migrateLegacyEventTabsToCanonical();
+    }
+
+    function createScoreboardTemplate() {
+      const eventId = prompt('Enter event ID (e.g., MM-DD-YYYY) for scoreboard template:');
+      if (!eventId) return;
+
+      showStatus('Creating scoreboard template...', 'info');
+
+      google.script.run
+        .withSuccessHandler((sheetName) => {
+          showStatus(`✓ Scoreboard template created: "${sheetName}"`, 'success');
+        })
+        .withFailureHandler(onFailure)
+        .createScoreboardTemplate(eventId);
+    }
+
+    function normalizeThrottleDefaults() {
+      if (!confirm('Reset missing Prize_Throttle parameters to defaults?\n\nThis will NOT overwrite existing values.\n\nContinue?')) {
+        return;
+      }
+
+      showStatus('Normalizing throttle defaults...', 'info');
+
+      google.script.run
+        .withSuccessHandler(() => {
+          showStatus('✓ Throttle defaults normalized.', 'success');
+        })
+        .withFailureHandler(onFailure)
+        .normalizePrizeThrottleDefaults();
+    }
+  </script>
+</body>
+</html>

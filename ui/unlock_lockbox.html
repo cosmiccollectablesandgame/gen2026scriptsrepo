@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    /* Base styles */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      padding: 16px;
+      margin: 0;
+      color: #333;
+    }
+
+    h2 {
+      margin: 0 0 4px 0;
+      color: #1a73e8;
+      font-size: 18px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 16px;
+      font-size: 12px;
+    }
+
+    /* Section styles */
+    .section {
+      margin-bottom: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #f5f5f5;
+    }
+
+    .section-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    /* Form elements */
+    label {
+      font-weight: 500;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    select, input, textarea {
+      width: 100%;
+      padding: 8px 10px;
+      margin-top: 4px;
+      margin-bottom: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 13px;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 50px;
+    }
+
+    /* Button styles */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #1557b0;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #d0d0d0;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-unlock {
+      background: #0f9d58;
+      color: #fff;
+      padding: 10px 20px;
+      font-size: 14px;
+    }
+
+    .btn-unlock:hover:not(:disabled) {
+      background: #0b8043;
+    }
+
+    /* Message styles */
+    #globalMessage {
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      display: none;
+    }
+
+    #globalMessage.visible {
+      display: block;
+    }
+
+    .msg-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .msg-error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .msg-info {
+      background: #e3f2fd;
+      color: #1565c0;
+      border: 1px solid #bbdefb;
+    }
+
+    /* Status panel styles */
+    #statusPanel {
+      min-height: 120px;
+    }
+
+    .status-placeholder {
+      color: #888;
+      font-style: italic;
+      text-align: center;
+      padding: 40px 0;
+    }
+
+    .key-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .key-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
+      background: #fff;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .key-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      margin-right: 8px;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .key-color.red { background: #ea4335; }
+    .key-color.blue { background: #4285f4; }
+    .key-color.green { background: #34a853; }
+    .key-color.yellow { background: #fbbc04; }
+    .key-color.purple { background: #9c27b0; }
+    .key-color.rainbow { background: linear-gradient(135deg, #ea4335, #fbbc04, #34a853, #4285f4, #9c27b0); }
+
+    .key-count {
+      font-weight: 600;
+      margin-left: auto;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .status-row:last-child {
+      border-bottom: none;
+    }
+
+    .status-label {
+      color: #666;
+    }
+
+    .status-value {
+      font-weight: 500;
+    }
+
+    .eligibility-box {
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 12px;
+      font-weight: 500;
+    }
+
+    .eligible {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .not-eligible {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    /* Button bar */
+    .button-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .button-bar-right {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Optional fields */
+    .optional-label {
+      font-size: 11px;
+      color: #888;
+      font-weight: normal;
+      margin-left: 4px;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Player name highlight */
+    .player-name-display {
+      font-weight: 600;
+      color: #1a73e8;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Unlock Lockbox</h2>
+  <p class="subtitle">Verify a winner, celebrate, and reset their keys for the next race.</p>
+
+  <div id="globalMessage"></div>
+
+  <!-- Section 1: Player Selection -->
+  <div class="section">
+    <div class="section-title">1. Select Player</div>
+    <label for="playerSelect">Player</label>
+    <select id="playerSelect" onchange="onPlayerChange()">
+      <option value="">-- Select a player --</option>
+    </select>
+  </div>
+
+  <!-- Section 2: Key Status Preview -->
+  <div class="section">
+    <div class="section-title">2. Key Status</div>
+    <div id="statusPanel">
+      <div class="status-placeholder">Select a player to view key status.</div>
+    </div>
+  </div>
+
+  <!-- Section 3: Unlock Confirmation -->
+  <div class="section">
+    <div class="section-title">3. Confirm Unlock</div>
+
+    <label for="staffInitials">Staff Initials <span class="optional-label">(optional)</span></label>
+    <input type="text" id="staffInitials" placeholder="e.g., JD" maxlength="10">
+
+    <label for="prizeNote">Prize Note <span class="optional-label">(optional)</span></label>
+    <textarea id="prizeNote" placeholder="e.g., Selected Dragon Plushie, Size L"></textarea>
+
+    <button id="unlockBtn" class="btn btn-unlock" onclick="onUnlock()" disabled>
+      Unlock Lockbox &amp; Reset Keys
+    </button>
+  </div>
+
+  <!-- Button Bar -->
+  <div class="button-bar">
+    <div></div>
+    <div class="button-bar-right">
+      <button class="btn btn-secondary" onclick="google.script.host.close()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // Current player status (cached for unlock)
+    let currentStatus = null;
+
+    /**
+     * Initialize the modal on load.
+     */
+    function init() {
+      clearStatus();
+      setGlobalMessage('', '');
+      loadPlayers();
+    }
+
+    /**
+     * Load player list from server.
+     */
+    function loadPlayers() {
+      setGlobalMessage('info', '<span class="spinner"></span>Loading players...');
+      google.script.run
+        .withSuccessHandler(populatePlayerList)
+        .withFailureHandler(showError)
+        .getKeyTrackerPlayers();
+    }
+
+    /**
+     * Populate the player dropdown.
+     */
+    function populatePlayerList(names) {
+      setGlobalMessage('', '');
+      const select = document.getElementById('playerSelect');
+
+      // Clear existing options except placeholder
+      select.innerHTML = '<option value="">-- Select a player --</option>';
+
+      if (!names || names.length === 0) {
+        setGlobalMessage('info', 'No players found in Key_Tracker.');
+        return;
+      }
+
+      names.forEach(function(name) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      });
+    }
+
+    /**
+     * Handle player selection change.
+     */
+    function onPlayerChange() {
+      const name = document.getElementById('playerSelect').value;
+
+      if (!name) {
+        clearStatus();
+        currentStatus = null;
+        return;
+      }
+
+      setGlobalMessage('info', '<span class="spinner"></span>Loading key status...');
+      setUnlockButtonEnabled(false);
+
+      google.script.run
+        .withSuccessHandler(renderStatus)
+        .withFailureHandler(function(err) {
+          showError(err);
+          clearStatus();
+          currentStatus = null;
+        })
+        .getPlayerKeyStatus(name);
+    }
+
+    /**
+     * Render the player's key status.
+     */
+    function renderStatus(status) {
+      setGlobalMessage('', '');
+      currentStatus = status;
+
+      const panel = document.getElementById('statusPanel');
+
+      // Build the status HTML
+      let html = '';
+
+      // Player name
+      html += '<div class="player-name-display">' + escapeHtml(status.preferred_name_id) + '</div>';
+
+      // Key counts grid
+      html += '<div class="key-grid">';
+      html += renderKeyItem('red', 'Red', status.red);
+      html += renderKeyItem('blue', 'Blue', status.blue);
+      html += renderKeyItem('green', 'Green', status.green);
+      html += renderKeyItem('yellow', 'Yellow', status.yellow);
+      html += renderKeyItem('purple', 'Purple', status.purple);
+      html += renderKeyItem('rainbow', 'Rainbow', status.rainbow);
+      html += '</div>';
+
+      // Status details
+      html += '<div class="status-details">';
+      html += renderStatusRow('Total Keys', status.totalKeys);
+      html += renderStatusRow('Colors Earned', status.colorsEarned || 'None');
+      html += renderStatusRow('Collected All 5', status.collectedAll5);
+      html += renderStatusRow('Rainbow Eligible', status.eligibleForRainbowKey ? 'Yes' : 'No');
+      html += '</div>';
+
+      // Eligibility box
+      if (status.eligibleForLockbox) {
+        html += '<div class="eligibility-box eligible">';
+        html += '&#10004; Eligible to unlock the Lockbox: ' + escapeHtml(status.eligibilityReason);
+        html += '</div>';
+        setUnlockButtonEnabled(true);
+      } else {
+        html += '<div class="eligibility-box not-eligible">';
+        html += '&#9940; Not eligible yet: ' + escapeHtml(status.eligibilityReason);
+        html += '</div>';
+        setUnlockButtonEnabled(false);
+      }
+
+      panel.innerHTML = html;
+    }
+
+    /**
+     * Render a key item for the grid.
+     */
+    function renderKeyItem(colorClass, label, count) {
+      return '<div class="key-item">' +
+        '<div class="key-color ' + colorClass + '"></div>' +
+        '<span>' + label + '</span>' +
+        '<span class="key-count">' + (count || 0) + '</span>' +
+        '</div>';
+    }
+
+    /**
+     * Render a status row.
+     */
+    function renderStatusRow(label, value) {
+      return '<div class="status-row">' +
+        '<span class="status-label">' + label + '</span>' +
+        '<span class="status-value">' + escapeHtml(String(value)) + '</span>' +
+        '</div>';
+    }
+
+    /**
+     * Handle unlock button click.
+     */
+    function onUnlock() {
+      const name = document.getElementById('playerSelect').value;
+
+      if (!name) {
+        setGlobalMessage('error', 'Please select a player first.');
+        return;
+      }
+
+      const staff = document.getElementById('staffInitials').value.trim();
+      const prizeNote = document.getElementById('prizeNote').value.trim();
+
+      // Confirmation dialog
+      if (!confirm('Unlock the Lockbox for ' + name + ' and reset all their keys to zero?')) {
+        return;
+      }
+
+      const payload = {
+        preferred_name_id: name,
+        staff: staff,
+        prizeNote: prizeNote
+      };
+
+      setGlobalMessage('info', '<span class="spinner"></span>Unlocking lockbox...');
+      setUnlockButtonEnabled(false);
+
+      google.script.run
+        .withSuccessHandler(handleUnlockResult)
+        .withFailureHandler(function(err) {
+          setUnlockButtonEnabled(true);
+          showError(err);
+        })
+        .unlockLockbox(payload);
+    }
+
+    /**
+     * Handle the unlock result.
+     */
+    function handleUnlockResult(result) {
+      if (!result.success) {
+        setGlobalMessage('error', result.message);
+        setUnlockButtonEnabled(true);
+        return;
+      }
+
+      // Success!
+      setGlobalMessage('success', '&#10004; ' + result.message);
+
+      // Re-render status with the post-reset values
+      if (result.status) {
+        renderStatus(result.status);
+      }
+
+      // Keep button disabled to prevent accidental double-run
+      setUnlockButtonEnabled(false);
+    }
+
+    /**
+     * Clear the status panel.
+     */
+    function clearStatus() {
+      document.getElementById('statusPanel').innerHTML =
+        '<div class="status-placeholder">Select a player to view key status.</div>';
+      setUnlockButtonEnabled(false);
+    }
+
+    /**
+     * Set the global message.
+     */
+    function setGlobalMessage(type, text) {
+      const el = document.getElementById('globalMessage');
+      if (!el) return;
+
+      if (!text) {
+        el.className = '';
+        el.innerHTML = '';
+        return;
+      }
+
+      el.className = 'visible';
+      if (type === 'success') el.classList.add('msg-success');
+      else if (type === 'error') el.classList.add('msg-error');
+      else if (type === 'info') el.classList.add('msg-info');
+
+      el.innerHTML = text;
+    }
+
+    /**
+     * Show an error message.
+     */
+    function showError(err) {
+      const msg = (err && err.message) ? err.message : String(err);
+      setGlobalMessage('error', escapeHtml(msg));
+      console.error('Error:', err);
+    }
+
+    /**
+     * Enable or disable the unlock button.
+     */
+    function setUnlockButtonEnabled(enabled) {
+      const btn = document.getElementById('unlockBtn');
+      if (btn) btn.disabled = !enabled;
+    }
+
+    /**
+     * Escape HTML special characters.
+     */
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Initialize on load
+    window.onload = init;
+  </script>
+</body>
+</html>

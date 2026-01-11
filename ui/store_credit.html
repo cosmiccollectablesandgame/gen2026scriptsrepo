@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #202124;
+      background: #fff;
+    }
+
+    h3 {
+      color: #1a73e8;
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Search Section */
+    #searchSection {
+      margin-bottom: 20px;
+    }
+
+    #searchBox {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    #searchBox:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+
+    #suggestionsList {
+      list-style: none;
+      margin-top: 8px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    #suggestionsList.active {
+      display: block;
+    }
+
+    #suggestionsList li {
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: background-color 0.1s;
+    }
+
+    #suggestionsList li:hover {
+      background-color: #f1f3f4;
+    }
+
+    /* Selected Player Section */
+    #selectedSection {
+      display: none;
+      margin-bottom: 20px;
+    }
+
+    #selectedSection.active {
+      display: block;
+    }
+
+    .selected-player-card {
+      background: #e8f0fe;
+      border: 1px solid #1a73e8;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .selected-player-header {
+      margin-bottom: 8px;
+    }
+
+    #selectedPlayerName {
+      font-weight: 600;
+      font-size: 16px;
+      color: #1a73e8;
+    }
+
+    #currentBalance {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a73e8;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    #balanceInquiryBtn {
+      width: 100%;
+      padding: 10px 16px;
+      background: #e8f0fe;
+      border: 1px solid #1a73e8;
+      border-radius: 4px;
+      color: #1a73e8;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    #balanceInquiryBtn:hover {
+      background: #d2e3fc;
+    }
+
+    #balanceInquiryBtn:active {
+      background: #c4d7f5;
+    }
+
+    #balanceInquiryBtn.loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .balance-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid #1a73e8;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+
+    #balanceInquiryBtn.loading .balance-spinner {
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Form Container */
+    #formContainer {
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #5f6368;
+      font-size: 13px;
+    }
+
+    label .required {
+      color: #d93025;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #5f6368;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .help-text.active {
+      display: block;
+    }
+
+    /* Radio Buttons */
+    .radio-group {
+      display: flex;
+      gap: 16px;
+    }
+
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .radio-option input[type="radio"] {
+      width: auto;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .radio-option label {
+      margin: 0;
+      cursor: pointer;
+      font-weight: 400;
+      color: #202124;
+    }
+
+    /* Accordion for Optional POS Reference */
+    .accordion {
+      margin-bottom: 16px;
+    }
+
+    .accordion-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: #f1f3f4;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .accordion-header:hover {
+      background: #e8eaed;
+    }
+
+    .accordion-title {
+      font-weight: 500;
+      font-size: 13px;
+      color: #5f6368;
+    }
+
+    .accordion-icon {
+      font-size: 18px;
+      color: #5f6368;
+      transition: transform 0.2s;
+    }
+
+    .accordion-icon.rotated {
+      transform: rotate(180deg);
+    }
+
+    .accordion-content {
+      display: none;
+      padding: 12px 0;
+    }
+
+    .accordion-content.active {
+      display: block;
+    }
+
+    /* Buttons */
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #submitBtn {
+      background: #1a73e8;
+      color: white;
+    }
+
+    #submitBtn:hover:not(:disabled) {
+      background: #1557b0;
+    }
+
+    #submitBtn:disabled {
+      background: #dadce0;
+      color: #80868b;
+      cursor: not-allowed;
+    }
+
+    #cancelBtn {
+      background: white;
+      color: #5f6368;
+      border: 1px solid #dadce0;
+    }
+
+    #cancelBtn:hover {
+      background: #f1f3f4;
+    }
+
+    /* History Container */
+    #historyContainer {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #dadce0;
+    }
+
+    #historyEmpty {
+      text-align: center;
+      color: #80868b;
+      font-size: 13px;
+      padding: 20px;
+    }
+
+    #historyContent {
+      display: none;
+    }
+
+    #historyContent.active {
+      display: block;
+    }
+
+    .history-item {
+      padding: 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .history-in {
+      color: #137333;
+    }
+
+    .history-out {
+      color: #d93025;
+    }
+
+    .history-details {
+      color: #5f6368;
+      font-size: 11px;
+    }
+
+    /* Toast Messages */
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #323232;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      display: none;
+      z-index: 1000;
+      max-width: 300px;
+      text-align: center;
+    }
+
+    #toast.active {
+      display: block;
+      animation: fadeInUp 0.3s;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    .toast-success {
+      background: #137333 !important;
+    }
+
+    .toast-error {
+      background: #d93025 !important;
+    }
+
+    .toast-warning {
+      background: #f9ab00 !important;
+    }
+
+    /* Refresh Indicator */
+    #refreshIndicator {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #137333;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      display: none;
+      z-index: 999;
+      animation: fadeOut 2s forwards;
+    }
+
+    @keyframes fadeOut {
+      0%, 50% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        display: none;
+      }
+    }
+
+    /* Footer */
+    #footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #dadce0;
+      text-align: center;
+      font-size: 11px;
+      color: #80868b;
+    }
+
+    /* Loading State */
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <h3>💳 Store Credit</h3>
+
+  <!-- Search Section -->
+  <div id="searchSection">
+    <input
+      type="text"
+      id="searchBox"
+      placeholder="Search for player..."
+      autocomplete="off"
+    />
+    <ul id="suggestionsList"></ul>
+  </div>
+
+  <!-- Selected Player Section -->
+  <div id="selectedSection">
+    <div class="selected-player-card">
+      <div class="selected-player-header">
+        <span id="selectedPlayerName"></span>
+      </div>
+      <div id="currentBalance">$0.00</div>
+      <button id="balanceInquiryBtn">
+        <span class="balance-spinner"></span>
+        <span>🔍 Balance Inquiry</span>
+      </button>
+    </div>
+
+    <!-- Form Container -->
+    <div id="formContainer">
+      <!-- Direction -->
+      <div class="form-group">
+        <label>Direction <span class="required">*</span></label>
+        <div class="radio-group">
+          <div class="radio-option">
+            <input type="radio" id="directionIn" name="direction" value="IN" checked />
+            <label for="directionIn">Add Credit (IN)</label>
+          </div>
+          <div class="radio-option">
+            <input type="radio" id="directionOut" name="direction" value="OUT" />
+            <label for="directionOut">Use Credit (OUT)</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Amount -->
+      <div class="form-group">
+        <label for="amount">Amount <span class="required">*</span></label>
+        <input
+          type="number"
+          id="amount"
+          placeholder="0.00"
+          step="0.01"
+          min="0.01"
+        />
+        <div id="amountHelp" class="help-text"></div>
+      </div>
+
+      <!-- Reason -->
+      <div class="form-group">
+        <label for="reason">Reason <span class="required">*</span></label>
+        <select id="reason">
+          <option value="">Select reason...</option>
+        </select>
+      </div>
+
+      <!-- Category -->
+      <div class="form-group">
+        <label for="category">Category <span class="required">*</span></label>
+        <select id="category">
+          <option value="">Select category...</option>
+        </select>
+      </div>
+
+      <!-- Tender Type -->
+      <div class="form-group">
+        <label for="tenderType">Tender Type <span class="required">*</span></label>
+        <select id="tenderType">
+          <option value="">Select tender type...</option>
+        </select>
+      </div>
+
+      <!-- POS Reference (Required) -->
+      <div id="posRefRequired" class="form-group" style="display: none;">
+        <label for="posRefType">POS Reference Type <span class="required">*</span></label>
+        <select id="posRefType">
+          <option value="">Select type...</option>
+        </select>
+      </div>
+
+      <div id="posRefIdRequired" class="form-group" style="display: none;">
+        <label for="posRefId">POS Reference ID <span class="required">*</span></label>
+        <input type="text" id="posRefId" placeholder="Enter reference ID..." />
+      </div>
+
+      <!-- POS Reference (Optional Accordion) -->
+      <div id="posRefOptional" class="accordion">
+        <div id="accordionHeader" class="accordion-header">
+          <span class="accordion-title">POS Reference (Optional)</span>
+          <span id="accordionIcon" class="accordion-icon">▼</span>
+        </div>
+        <div id="accordionContent" class="accordion-content">
+          <div class="form-group">
+            <label for="posRefTypeOpt">POS Reference Type</label>
+            <select id="posRefTypeOpt">
+              <option value="">Select type...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="posRefIdOpt">POS Reference ID</label>
+            <input type="text" id="posRefIdOpt" placeholder="Enter reference ID..." />
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="form-group">
+        <label for="description">Description (Optional)</label>
+        <textarea id="description" placeholder="Additional notes..."></textarea>
+        <div id="descriptionHelp" class="help-text">
+          Provide context for this transaction
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="button-group">
+        <button id="cancelBtn">Cancel</button>
+        <button id="submitBtn" disabled>Submit Transaction</button>
+      </div>
+    </div>
+
+    <!-- History Container -->
+    <div id="historyContainer">
+      <h4 style="color: #5f6368; font-size: 14px; margin-bottom: 12px;">Recent Transactions</h4>
+      <div id="historyEmpty">No transactions yet</div>
+      <div id="historyContent"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Refresh Indicator -->
+  <div id="refreshIndicator">Updated ✓</div>
+
+  <!-- Footer -->
+  <div id="footer">
+    <div id="serverVersion">Store Credit</div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // STATE MANAGEMENT
+    // =========================================================================
+
+    const state = {
+      selectedPlayer: null,
+      dropdownData: null,
+      allPlayers: [],
+      currentBalance: 0
+    };
+
+    // =========================================================================
+    // INITIALIZATION
+    // =========================================================================
+
+    function initializeSidebar() {
+      // Load dropdown data and player list
+      google.script.run
+        .withSuccessHandler(onDropdownDataLoaded)
+        .withFailureHandler(showError)
+        .getDropdownData();
+
+      google.script.run
+        .withSuccessHandler(onPlayerNamesLoaded)
+        .withFailureHandler(showError)
+        .getPlayerNames();
+
+      // Setup event listeners
+      setupEventListeners();
+
+      // Setup refresh listener
+      setupRefreshListener();
+
+      // Focus search box
+      setTimeout(function() {
+        document.getElementById('searchBox').focus();
+      }, 100);
+    }
+
+    function onDropdownDataLoaded(data) {
+      state.dropdownData = data;
+
+      // Populate dropdowns
+      populateDropdown('reason', data.reasons);
+      populateDropdown('category', data.categories);
+      populateDropdown('tenderType', data.tenderTypes);
+      populateDropdown('posRefType', data.posRefTypes);
+      populateDropdown('posRefTypeOpt', data.posRefTypes);
+
+      // Set footer version
+      document.getElementById('serverVersion').textContent =
+        'Store Credit ' + (data.serverVersion || '');
+    }
+
+    function onPlayerNamesLoaded(players) {
+      state.allPlayers = players;
+    }
+
+    function populateDropdown(selectId, options) {
+      const select = document.getElementById(selectId);
+      options.forEach(function(option) {
+        const opt = document.createElement('option');
+        opt.value = option;
+        opt.textContent = option;
+        select.appendChild(opt);
+      });
+    }
+
+    // =========================================================================
+    // EVENT LISTENERS SETUP
+    // =========================================================================
+
+    function setupEventListeners() {
+      // Search
+      document.getElementById('searchBox').addEventListener('input', onSearchInput);
+
+      // Balance Inquiry Button
+      document.getElementById('balanceInquiryBtn').addEventListener('click', onBalanceInquiry);
+
+      // Direction radios
+      document.querySelectorAll('input[name="direction"]').forEach(function(radio) {
+        radio.addEventListener('change', onDirectionChange);
+      });
+
+      // Form fields
+      document.getElementById('reason').addEventListener('change', onReasonChange);
+      document.getElementById('category').addEventListener('change', onCategoryChange);
+      document.getElementById('tenderType').addEventListener('change', validateForm);
+      document.getElementById('amount').addEventListener('input', onAmountInput);
+      document.getElementById('description').addEventListener('input', validateForm);
+
+      // POS Reference fields
+      document.getElementById('posRefType').addEventListener('change', validateForm);
+      document.getElementById('posRefId').addEventListener('input', validateForm);
+      document.getElementById('posRefTypeOpt').addEventListener('change', validateForm);
+      document.getElementById('posRefIdOpt').addEventListener('input', validateForm);
+
+      // Accordion
+      document.getElementById('accordionHeader').addEventListener('click', toggleAccordion);
+
+      // Buttons
+      document.getElementById('submitBtn').addEventListener('click', onSubmit);
+      document.getElementById('cancelBtn').addEventListener('click', onCancel);
+    }
+
+    // =========================================================================
+    // REFRESH LISTENER SETUP
+    // =========================================================================
+
+    function setupRefreshListener() {
+      let consecutiveErrors = 0;
+      const MAX_ERRORS = 5;
+
+      const refreshInterval = setInterval(function() {
+        google.script.run
+          .withSuccessHandler(function(shouldRefresh) {
+            consecutiveErrors = 0;
+            if (shouldRefresh && state.selectedPlayer) {
+              console.log('Ledger updated - refreshing player preview');
+              loadPlayerPreview(state.selectedPlayer);
+              showRefreshIndicator();
+            }
+          })
+          .withFailureHandler(function(error) {
+            consecutiveErrors++;
+            console.error('Refresh check failed (' + consecutiveErrors + '/' + MAX_ERRORS + '):', error.message);
+            if (consecutiveErrors >= MAX_ERRORS) {
+              clearInterval(refreshInterval);
+              showToast('Live refresh disabled due to errors. Reload sidebar to restart.', 'warning');
+            }
+          })
+          .checkForLedgerUpdates();
+      }, 2000);
+
+      window.refreshIntervalId = refreshInterval;
+    }
+
+    function showRefreshIndicator() {
+      const indicator = document.getElementById('refreshIndicator');
+      indicator.style.display = 'block';
+      setTimeout(function() {
+        indicator.style.display = 'none';
+      }, 2000);
+    }
+
+    // =========================================================================
+    // PLAYER SEARCH
+    // =========================================================================
+
+    function onSearchInput(event) {
+      const query = event.target.value.trim().toLowerCase();
+      const suggestionsList = document.getElementById('suggestionsList');
+
+      if (query.length === 0) {
+        suggestionsList.classList.remove('active');
+        suggestionsList.innerHTML = '';
+        return;
+      }
+
+      // Filter players
+      const matches = state.allPlayers.filter(function(player) {
+        return player.toLowerCase().includes(query);
+      }).slice(0, 10); // Limit to 10 suggestions
+
+      if (matches.length === 0) {
+        suggestionsList.classList.remove('active');
+        suggestionsList.innerHTML = '';
+        return;
+      }
+
+      // Populate suggestions
+      suggestionsList.innerHTML = '';
+      matches.forEach(function(player) {
+        const li = document.createElement('li');
+        li.textContent = player;
+        li.addEventListener('click', function() {
+          selectPlayer(player);
+        });
+        suggestionsList.appendChild(li);
+      });
+
+      suggestionsList.classList.add('active');
+    }
+
+    function selectPlayer(playerName) {
+      state.selectedPlayer = playerName;
+
+      // Update UI
+      document.getElementById('selectedPlayerName').textContent = playerName;
+      document.getElementById('searchBox').value = '';
+      document.getElementById('suggestionsList').classList.remove('active');
+      document.getElementById('suggestionsList').innerHTML = '';
+      document.getElementById('searchSection').style.display = 'none';
+      document.getElementById('selectedSection').classList.add('active');
+    }
+
+    // =========================================================================
+    // BALANCE INQUIRY
+    // =========================================================================
+
+    function onBalanceInquiry() {
+      if (!state.selectedPlayer) {
+        showToast('No player selected', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('balanceInquiryBtn');
+      btn.classList.add('loading');
+
+      // Fetch current balance - NO underscore on function name!
+      google.script.run
+        .withSuccessHandler(function(balance) {
+          btn.classList.remove('loading');
+          state.currentBalance = balance;
+          document.getElementById('currentBalance').textContent = '$' + balance.toFixed(2);
+          showToast('Balance: $' + balance.toFixed(2), 'success');
+        })
+        .withFailureHandler(function(error) {
+          btn.classList.remove('loading');
+          showToast('Error: ' + (error.message || error), 'error');
+        })
+        .getCurrentBalance(state.selectedPlayer);
+
+      // Also load transaction history
+      google.script.run
+        .withSuccessHandler(displayHistory)
+        .withFailureHandler(function(error) {
+          console.error('History error:', error);
+        })
+        .getPlayerHistory(state.selectedPlayer, 5);
+    }
+
+    function loadPlayerPreview(playerName) {
+      // Load current balance
+      google.script.run
+        .withSuccessHandler(function(balance) {
+          state.currentBalance = balance;
+          document.getElementById('currentBalance').textContent =
+            '$' + balance.toFixed(2);
+        })
+        .withFailureHandler(showError)
+        .getCurrentBalance(playerName);
+
+      // Load transaction history
+      google.script.run
+        .withSuccessHandler(displayHistory)
+        .withFailureHandler(showError)
+        .getPlayerHistory(playerName, 5);
+    }
+
+    function displayHistory(transactions) {
+      const historyEmpty = document.getElementById('historyEmpty');
+      const historyContent = document.getElementById('historyContent');
+
+      if (transactions.length === 0) {
+        historyEmpty.style.display = 'block';
+        historyContent.classList.remove('active');
+        historyContent.innerHTML = '';
+        return;
+      }
+
+      historyEmpty.style.display = 'none';
+      historyContent.classList.add('active');
+      historyContent.innerHTML = '';
+
+      transactions.forEach(function(tx) {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+
+        const header = document.createElement('div');
+        header.className = 'history-header';
+
+        const dirSpan = document.createElement('span');
+        dirSpan.className = tx.direction === 'IN' ? 'history-in' : 'history-out';
+        dirSpan.textContent = (tx.direction === 'IN' ? '+' : '-') + '$' + tx.amount.toFixed(2);
+
+        const balSpan = document.createElement('span');
+        balSpan.textContent = 'Bal: $' + tx.balance.toFixed(2);
+
+        header.appendChild(dirSpan);
+        header.appendChild(balSpan);
+
+        const details = document.createElement('div');
+        details.className = 'history-details';
+        details.textContent = tx.reason + ' • ' + tx.category;
+        if (tx.description) {
+          details.textContent += ' • ' + tx.description;
+        }
+
+        item.appendChild(header);
+        item.appendChild(details);
+        historyContent.appendChild(item);
+      });
+    }
+
+    // =========================================================================
+    // FORM HANDLING
+    // =========================================================================
+
+    function onDirectionChange() {
+      const direction = document.querySelector('input[name="direction"]:checked').value;
+      const amountHelp = document.getElementById('amountHelp');
+
+      if (direction === 'IN') {
+        amountHelp.textContent = 'Adding credit to player balance';
+        amountHelp.classList.add('active');
+      } else {
+        amountHelp.textContent = 'Deducting credit from player balance';
+        amountHelp.classList.add('active');
+      }
+
+      validateForm();
+    }
+
+    function onReasonChange() {
+      const reason = document.getElementById('reason').value;
+
+      // Show POS reference as required for certain reasons
+      const requiresPOS = ['Product Purchase', 'Refund'].includes(reason);
+
+      if (requiresPOS) {
+        document.getElementById('posRefRequired').style.display = 'block';
+        document.getElementById('posRefIdRequired').style.display = 'block';
+        document.getElementById('posRefOptional').style.display = 'none';
+      } else {
+        document.getElementById('posRefRequired').style.display = 'none';
+        document.getElementById('posRefIdRequired').style.display = 'none';
+        document.getElementById('posRefOptional').style.display = 'block';
+      }
+
+      validateForm();
+    }
+
+    function onCategoryChange() {
+      validateForm();
+    }
+
+    function onAmountInput() {
+      const amount = parseFloat(document.getElementById('amount').value);
+      const direction = document.querySelector('input[name="direction"]:checked').value;
+
+      if (!isNaN(amount) && amount > 0) {
+        const newBalance = direction === 'IN'
+          ? state.currentBalance + amount
+          : state.currentBalance - amount;
+
+        document.getElementById('amountHelp').textContent =
+          'New balance: $' + newBalance.toFixed(2);
+        document.getElementById('amountHelp').classList.add('active');
+      }
+
+      validateForm();
+    }
+
+    function toggleAccordion() {
+      const content = document.getElementById('accordionContent');
+      const icon = document.getElementById('accordionIcon');
+
+      if (content.classList.contains('active')) {
+        content.classList.remove('active');
+        icon.classList.remove('rotated');
+      } else {
+        content.classList.add('active');
+        icon.classList.add('rotated');
+      }
+    }
+
+    function validateForm() {
+      const amount = parseFloat(document.getElementById('amount').value);
+      const reason = document.getElementById('reason').value;
+      const category = document.getElementById('category').value;
+      const tenderType = document.getElementById('tenderType').value;
+
+      let isValid = true;
+
+      // Basic required fields
+      if (isNaN(amount) || amount <= 0) isValid = false;
+      if (!reason) isValid = false;
+      if (!category) isValid = false;
+      if (!tenderType) isValid = false;
+
+      // Check POS reference if required
+      if (document.getElementById('posRefRequired').style.display !== 'none') {
+        const posRefType = document.getElementById('posRefType').value;
+        const posRefId = document.getElementById('posRefId').value.trim();
+        if (!posRefType || !posRefId) isValid = false;
+      }
+
+      document.getElementById('submitBtn').disabled = !isValid;
+    }
+
+    function resetForm() {
+      document.getElementById('directionIn').checked = true;
+      document.getElementById('amount').value = '';
+      document.getElementById('reason').value = '';
+      document.getElementById('category').value = '';
+      document.getElementById('tenderType').value = '';
+      document.getElementById('description').value = '';
+      document.getElementById('posRefType').value = '';
+      document.getElementById('posRefId').value = '';
+      document.getElementById('posRefTypeOpt').value = '';
+      document.getElementById('posRefIdOpt').value = '';
+      document.getElementById('amountHelp').classList.remove('active');
+      document.getElementById('posRefRequired').style.display = 'none';
+      document.getElementById('posRefIdRequired').style.display = 'none';
+      document.getElementById('posRefOptional').style.display = 'block';
+      validateForm();
+    }
+
+    // =========================================================================
+    // FORM SUBMISSION
+    // =========================================================================
+
+    function onSubmit() {
+      const direction = document.querySelector('input[name="direction"]:checked').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      const reason = document.getElementById('reason').value;
+      const category = document.getElementById('category').value;
+      const tenderType = document.getElementById('tenderType').value;
+      const description = document.getElementById('description').value.trim();
+
+      // Determine which POS ref fields to use
+      let posRefType = '';
+      let posRefId = '';
+
+      if (document.getElementById('posRefRequired').style.display !== 'none') {
+        posRefType = document.getElementById('posRefType').value;
+        posRefId = document.getElementById('posRefId').value.trim();
+      } else {
+        posRefType = document.getElementById('posRefTypeOpt').value;
+        posRefId = document.getElementById('posRefIdOpt').value.trim();
+      }
+
+      const payload = {
+        playerName: state.selectedPlayer,
+        direction: direction,
+        amount: amount,
+        reason: reason,
+        category: category,
+        tenderType: tenderType,
+        description: description,
+        posRefType: posRefType,
+        posRefId: posRefId
+      };
+
+      // Disable form
+      document.getElementById('submitBtn').disabled = true;
+      document.getElementById('formContainer').classList.add('loading');
+
+      // Submit
+      google.script.run
+        .withSuccessHandler(onSubmitSuccess)
+        .withFailureHandler(onSubmitError)
+        .submitStoreCredit(payload);
+    }
+
+    function onSubmitSuccess(result) {
+      document.getElementById('formContainer').classList.remove('loading');
+
+      showToast('Transaction recorded successfully!', 'success');
+
+      // Update balance display
+      state.currentBalance = result.newBalance;
+      document.getElementById('currentBalance').textContent =
+        '$' + result.newBalance.toFixed(2);
+
+      // Reload history
+      loadPlayerPreview(state.selectedPlayer);
+
+      // Reset form
+      resetForm();
+    }
+
+    function onSubmitError(error) {
+      document.getElementById('formContainer').classList.remove('loading');
+      document.getElementById('submitBtn').disabled = false;
+
+      showError(error);
+    }
+
+    function onCancel() {
+      resetForm();
+    }
+
+    // =========================================================================
+    // UI UTILITIES
+    // =========================================================================
+
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'active';
+
+      if (type === 'success') {
+        toast.classList.add('toast-success');
+      } else if (type === 'error') {
+        toast.classList.add('toast-error');
+      } else if (type === 'warning') {
+        toast.classList.add('toast-warning');
+      }
+
+      setTimeout(function() {
+        toast.classList.remove('active');
+        toast.className = '';
+      }, 3000);
+    }
+
+    function showError(error) {
+      const message = error.message || String(error);
+      console.error('Error:', message);
+      showToast(message, 'error');
+    }
+
+    // =========================================================================
+    // INITIALIZE ON LOAD
+    // =========================================================================
+
+    document.addEventListener('DOMContentLoaded', initializeSidebar);
+  </script>
+</body>
+</html>

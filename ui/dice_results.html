@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 15px; }
+    .player-select { width: 100%; padding: 8px; margin: 10px 0; }
+    .award-btn {
+      background: #4CAF50; color: white;
+      padding: 12px 24px; border: none;
+      cursor: pointer; font-size: 16px;
+      border-radius: 4px; margin: 5px;
+    }
+    .award-btn:hover { background: #45a049; }
+    .award-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .result { margin-top: 15px; padding: 10px; border-radius: 4px; }
+    .success { background: #dff0d8; color: #3c763d; }
+    .error { background: #f2dede; color: #a94442; }
+    .current-points { font-size: 24px; font-weight: bold; margin: 10px 0; }
+    .loading { color: #666; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h3>Award Dice Points</h3>
+
+  <label for="playerSelect">Select Player:</label>
+  <select id="playerSelect" class="player-select" onchange="loadCurrentPoints()">
+    <option value="">-- Select Player --</option>
+  </select>
+
+  <div id="currentPointsDisplay" style="display:none;">
+    <p>Current Dice Points: <span id="currentPoints" class="current-points">0</span></p>
+  </div>
+
+  <div>
+    <button class="award-btn" onclick="awardPoints(1)" id="award1Btn" disabled>
+      Award +1 Point
+    </button>
+  </div>
+
+  <div id="resultArea" class="result" style="display:none;"></div>
+
+  <script>
+    // Load player list on dialog open
+    document.getElementById('playerSelect').innerHTML = '<option value="">Loading...</option>';
+
+    google.script.run
+      .withSuccessHandler(populatePlayers)
+      .withFailureHandler(handleLoadError)
+      .getPlayerList();
+
+    function populatePlayers(players) {
+      const select = document.getElementById('playerSelect');
+      select.innerHTML = '<option value="">-- Select Player --</option>';
+
+      if (!players || players.length === 0) {
+        select.innerHTML = '<option value="">No players found</option>';
+        return;
+      }
+
+      players.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name;
+        opt.dataset.points = p.dicePoints || 0;
+        select.appendChild(opt);
+      });
+    }
+
+    function handleLoadError(err) {
+      const select = document.getElementById('playerSelect');
+      select.innerHTML = '<option value="">Error loading players</option>';
+      console.error('Failed to load players:', err);
+    }
+
+    function loadCurrentPoints() {
+      const select = document.getElementById('playerSelect');
+      const selectedOption = select.options[select.selectedIndex];
+
+      if (select.value) {
+        document.getElementById('currentPoints').textContent =
+          selectedOption.dataset.points || '0';
+        document.getElementById('currentPointsDisplay').style.display = 'block';
+        document.getElementById('award1Btn').disabled = false;
+      } else {
+        document.getElementById('currentPointsDisplay').style.display = 'none';
+        document.getElementById('award1Btn').disabled = true;
+      }
+      document.getElementById('resultArea').style.display = 'none';
+    }
+
+    function awardPoints(qty) {
+      const playerName = document.getElementById('playerSelect').value;
+      if (!playerName) {
+        showResult(false, 'Please select a player first.');
+        return;
+      }
+
+      document.getElementById('award1Btn').disabled = true;
+      document.getElementById('resultArea').style.display = 'block';
+      document.getElementById('resultArea').className = 'result loading';
+      document.getElementById('resultArea').textContent = 'Awarding point...';
+
+      google.script.run
+        .withSuccessHandler(result => {
+          if (result.success) {
+            showResult(true, result.message);
+
+            // Update displayed points
+            const newTotal = parseInt(document.getElementById('currentPoints').textContent) + qty;
+            document.getElementById('currentPoints').textContent = newTotal;
+
+            // Update the option's data attribute
+            const select = document.getElementById('playerSelect');
+            select.options[select.selectedIndex].dataset.points = newTotal;
+          } else {
+            showResult(false, result.message);
+          }
+
+          document.getElementById('award1Btn').disabled = false;
+        })
+        .withFailureHandler(err => {
+          showResult(false, 'Error: ' + err.message);
+          document.getElementById('award1Btn').disabled = false;
+        })
+        .awardDicePoint(playerName, qty);
+    }
+
+    function showResult(success, message) {
+      const resultDiv = document.getElementById('resultArea');
+      resultDiv.style.display = 'block';
+      resultDiv.className = 'result ' + (success ? 'success' : 'error');
+      resultDiv.textContent = (success ? 'Success: ' : 'Error: ') + message;
+    }
+  </script>
+</body>
+</html>

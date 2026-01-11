@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 16px 20px;
+      font-size: 13px;
+      background: #f5f5f5;
+      color: #202124;
+    }
+
+    .container {
+      background: #ffffff;
+      padding: 16px 18px;
+      border-radius: 10px;
+      max-width: 440px;
+      margin: 0 auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    h3 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
+      font-weight: 500;
+      color: #1a73e8;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: #5f6368;
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      color: #444;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 6px 8px;
+      font-size: 13px;
+      border-radius: 6px;
+      border: 1px solid #dadce0;
+      outline: none;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 1px rgba(26,115,232,0.2);
+    }
+
+    textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .field-inline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .field-inline > div {
+      flex: 1;
+    }
+
+    .bp-summary {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #1967d2;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 12px;
+      min-height: 16px;
+    }
+
+    .status.error {
+      color: #c5221f;
+    }
+
+    .status.ok {
+      color: #188038;
+    }
+
+    .actions {
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    button {
+      border-radius: 999px;
+      border: none;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-secondary {
+      background: #e8eaed;
+      color: #202124;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: #ffffff;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h3>Redeem Bonus Points</h3>
+    <div class="subtitle">
+      Select a player, confirm their BP balance, then enter what they’re spending points on.
+    </div>
+
+    <form id="redeem-form" onsubmit="handleSubmit(event)">
+      <!-- PLAYER -->
+      <label for="playerInput">Player (PreferredName)</label>
+      <input list="playerList" id="playerInput" name="player"
+             placeholder="Start typing a player name…" autocomplete="off"
+             onblur="lookupBalance()" />
+      <datalist id="playerList"></datalist>
+
+      <div id="bpSummary" class="bp-summary"></div>
+
+      <!-- AMOUNT + ITEM -->
+      <div class="field-inline">
+        <div>
+          <label for="amountInput">BP to Redeem</label>
+          <input type="number" id="amountInput" name="amount" min="1" step="1" />
+        </div>
+        <div>
+          <label for="itemInput">Item Redeemed</label>
+          <input type="text" id="itemInput" name="item"
+                 placeholder="e.g. L2 Pack, Playmat, Store Credit" />
+        </div>
+      </div>
+
+      <!-- NOTES -->
+      <label for="notesInput">Notes (optional)</label>
+      <textarea id="notesInput" name="notes"
+                placeholder="Staff notes, event reference, etc."></textarea>
+
+      <div id="status" class="status"></div>
+
+      <div class="actions">
+        <button type="button" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+        <button type="submit" class="btn-primary" id="submitBtn">Redeem</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    function setStatus(msg, type) {
+      var el = document.getElementById('status');
+      el.textContent = msg || '';
+      el.className = 'status ' + (type || '');
+    }
+
+    function setBPSummary(text) {
+      document.getElementById('bpSummary').textContent = text || '';
+    }
+
+    function setLoading(loading) {
+      document.getElementById('submitBtn').disabled = !!loading;
+    }
+
+    // Load PreferredNames into datalist
+    function loadPlayers() {
+      google.script.run.withSuccessHandler(function(names) {
+        var list = document.getElementById('playerList');
+        list.innerHTML = '';
+        (names || []).forEach(function(name) {
+          var opt = document.createElement('option');
+          opt.value = name;
+          list.appendChild(opt);
+        });
+      }).getPreferredNamesForUI();
+    }
+
+    // Look up BP info when the field loses focus
+    function lookupBalance() {
+      var name = document.getElementById('playerInput').value.trim();
+      if (!name) {
+        setBPSummary('');
+        return;
+      }
+      setStatus('Looking up BP balance…', '');
+      google.script.run.withSuccessHandler(function(res) {
+        if (!res || !res.success) {
+          setStatus(res && res.error ? res.error : 'Player not found.', 'error');
+          setBPSummary('');
+          return;
+        }
+        setStatus('', '');
+        setBPSummary(
+          res.preferredName + ' • Current BP: ' + res.currentBP +
+          ' • Historical: ' + res.historicalBP +
+          (res.prestige ? (' • Prestige: ' + res.prestige) : '')
+        );
+      }).getBPInfoForUI(name);
+    }
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      var rawName = document.getElementById('playerInput').value.trim();
+      var amount = document.getElementById('amountInput').value;
+      var item = document.getElementById('itemInput').value.trim();
+      var notes = document.getElementById('notesInput').value.trim();
+
+      if (!rawName) {
+        setStatus('Player is required.', 'error');
+        return;
+      }
+      if (!amount || Number(amount) <= 0) {
+        setStatus('Redemption amount must be positive.', 'error');
+        return;
+      }
+
+      setLoading(true);
+      setStatus('Processing redemption…', '');
+
+      var payload = {
+        rawName: rawName,
+        amount: amount,
+        itemRedeemed: item,
+        notes: notes
+      };
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          setLoading(false);
+          if (!res || !res.success) {
+            setStatus(res && res.error ? res.error : 'Redemption failed.', 'error');
+            return;
+          }
+          setStatus(
+            'Redeemed ' + res.redeemed + ' BP from ' + res.player +
+            '. New balance: ' + res.newBP + ' BP.',
+            'ok'
+          );
+          // Clear amount for quick follow-up
+          document.getElementById('amountInput').value = '';
+          lookupBalance(); // refresh summary
+        })
+        .handleRedeemBPFromUI(payload);
+    }
+
+    document.addEventListener('DOMContentLoaded', loadPlayers);
+  </script>
+</body>
+</html>

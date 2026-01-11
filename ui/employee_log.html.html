@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 13px;
+        margin: 0;
+        padding: 8px 10px;
+        background: #f5f5f5;
+      }
+
+      h2 {
+        font-size: 18px;
+        margin: 4px 0 2px;
+      }
+
+      .subtitle {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 8px;
+      }
+
+      .filters {
+        background: #fff;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        padding: 6px 8px;
+        margin-bottom: 8px;
+      }
+
+      .filters-row {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 4px;
+        flex-wrap: wrap;
+      }
+
+      input[type="text"], select {
+        font-size: 12px;
+        padding: 4px 6px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      input[type="text"] {
+        flex: 1;
+        min-width: 100px;
+      }
+
+      label {
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .list {
+        max-height: 260px;
+        overflow-y: auto;
+        background: #fff;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        margin-bottom: 8px;
+      }
+
+      .task-row {
+        padding: 6px 8px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+      }
+
+      .task-row:last-child {
+        border-bottom: none;
+      }
+
+      .task-row:hover {
+        background: #f0f7ff;
+      }
+
+      .task-row.selected {
+        background: #e2f0ff;
+        border-left: 3px solid #1a73e8;
+      }
+
+      .task-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+      }
+
+      .task-summary {
+        font-weight: 600;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-right: 8px;
+      }
+
+      .task-meta {
+        font-size: 11px;
+        color: #555;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 2px;
+      }
+
+      .pill {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        text-transform: uppercase;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      .pill.urg-low { background: #e8f5e9; color: #2e7d32; }
+      .pill.urg-medium { background: #fff3e0; color: #ef6c00; }
+      .pill.urg-high { background: #ffebee; color: #c62828; }
+      .pill.urg-critical { background: #fbe9e7; color: #bf360c; font-weight: 700; }
+
+      .pill.status-pending { background: #e3f2fd; color: #1565c0; }
+      .pill.status-inprogress { background: #fff8e1; color: #f57c00; }
+      .pill.status-completed { background: #e8f5e9; color: #2e7d32; }
+      .pill.status-hold { background: #f3e5f5; color: #6a1b9a; }
+      .pill.status-cancelled { background: #fafafa; color: #757575; }
+
+      .details {
+        background: #fff;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+
+      .details-header {
+        font-weight: 600;
+        font-size: 13px;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .details-row {
+        margin-bottom: 4px;
+        display: flex;
+      }
+
+      .details-label {
+        font-weight: 600;
+        width: 90px;
+        flex-shrink: 0;
+        color: #555;
+      }
+
+      .details-value {
+        flex: 1;
+        word-break: break-word;
+      }
+
+      .details-value.empty {
+        color: #999;
+        font-style: italic;
+      }
+
+      .actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        font-size: 12px;
+        padding: 6px 10px;
+        cursor: pointer;
+        border-radius: 4px;
+        border: none;
+      }
+
+      .btn-primary {
+        background: #1a73e8;
+        color: #fff;
+      }
+
+      .btn-primary:hover {
+        background: #1557b0;
+      }
+
+      .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+      }
+
+      .btn-secondary:hover {
+        background: #d0d0d0;
+      }
+
+      .btn-warning {
+        background: #ff9800;
+        color: #fff;
+      }
+
+      .btn-warning:hover {
+        background: #e68900;
+      }
+
+      .status-bar {
+        font-size: 11px;
+        color: #777;
+        margin-top: 4px;
+        padding: 4px 0;
+      }
+
+      .status-bar.error {
+        color: #c62828;
+      }
+
+      .empty {
+        font-size: 11px;
+        color: #777;
+        font-style: italic;
+        padding: 12px 8px;
+        text-align: center;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+      }
+
+      .refresh-btn {
+        background: none;
+        border: 1px solid #ccc;
+        padding: 4px 8px;
+        font-size: 11px;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+
+      .refresh-btn:hover {
+        background: #f0f0f0;
+      }
+
+      .filters-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+
+      .filters-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Employee Log</h2>
+    <div class="subtitle">View and update staff tasks without editing the sheet directly.</div>
+
+    <div class="filters">
+      <div class="filters-header">
+        <span class="filters-title">Filters</span>
+        <button class="refresh-btn" onclick="loadTasks()">Refresh</button>
+      </div>
+      <div class="filters-row">
+        <input id="search" type="text" placeholder="Search tasks / customers...">
+      </div>
+      <div class="filters-row">
+        <select id="urgencyFilter">
+          <option value="">All urgency</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Critical">Critical</option>
+        </select>
+        <select id="statusFilter">
+          <option value="">All status</option>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="On Hold">On Hold</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="filters-row">
+        <select id="assignedFilter">
+          <option value="">All employees</option>
+        </select>
+      </div>
+      <div class="filters-row">
+        <select id="sortBy">
+          <option value="due_date">Sort by Due Date</option>
+          <option value="urgency">Sort by Urgency</option>
+          <option value="LastUpdated">Sort by Last Updated</option>
+          <option value="created_at">Sort by Created At</option>
+        </select>
+        <select id="sortDir">
+          <option value="asc">Asc</option>
+          <option value="desc">Desc</option>
+        </select>
+      </div>
+      <div class="filters-row">
+        <label>
+          <input type="checkbox" id="onlyOpen" checked>
+          Only open tasks
+        </label>
+      </div>
+    </div>
+
+    <div id="taskList" class="list">
+      <div class="loading">Loading tasks...</div>
+    </div>
+
+    <div id="details" class="details" style="display:none;"></div>
+
+    <div class="status-bar" id="status"></div>
+
+    <script>
+      var currentTasks = [];
+      var selectedTask = null;
+      var searchTimeout = null;
+
+      function setStatus(msg, isError) {
+        var el = document.getElementById('status');
+        if (el) {
+          el.textContent = msg || '';
+          el.className = 'status-bar' + (isError ? ' error' : '');
+        }
+      }
+
+      function loadTasks() {
+        var filters = {
+          search: document.getElementById('search').value.trim() || null,
+          urgency: document.getElementById('urgencyFilter').value || null,
+          status: document.getElementById('statusFilter').value || null,
+          assignedTo: document.getElementById('assignedFilter').value || null,
+          onlyOpen: document.getElementById('onlyOpen').checked,
+          sortBy: document.getElementById('sortBy').value || null,
+          sortDir: document.getElementById('sortDir').value || 'asc',
+          limit: 200
+        };
+
+        setStatus('Loading tasks...');
+        document.getElementById('taskList').innerHTML = '<div class="loading">Loading tasks...</div>';
+
+        google.script.run
+          .withSuccessHandler(function(tasks) {
+            currentTasks = tasks || [];
+            renderTasks();
+            populateAssignedFilter();
+            setStatus(currentTasks.length + ' task(s) loaded.');
+          })
+          .withFailureHandler(function(err) {
+            setStatus('Error: ' + (err && err.message ? err.message : err), true);
+            document.getElementById('taskList').innerHTML = '<div class="empty">Failed to load tasks. Check if Employee_Log sheet exists.</div>';
+          })
+          .getEmployeeLogTasks(filters);
+      }
+
+      function renderTasks() {
+        var container = document.getElementById('taskList');
+        container.innerHTML = '';
+
+        selectedTask = null;
+        renderDetails(null);
+
+        if (!currentTasks.length) {
+          container.innerHTML = '<div class="empty">No tasks found matching your filters.</div>';
+          return;
+        }
+
+        currentTasks.forEach(function(task, idx) {
+          var row = document.createElement('div');
+          row.className = 'task-row';
+          row.dataset.index = idx;
+
+          var main = document.createElement('div');
+          main.className = 'task-main';
+
+          var summary = document.createElement('div');
+          summary.className = 'task-summary';
+          summary.textContent = task.task_summary || '(no summary)';
+
+          var urgencyPill = document.createElement('span');
+          var urg = (task.urgency || '').toUpperCase();
+          urgencyPill.className = 'pill ' +
+            (urg === 'CRITICAL' ? 'urg-critical' :
+             urg === 'HIGH' ? 'urg-high' :
+             urg === 'MEDIUM' ? 'urg-medium' :
+             urg === 'LOW' ? 'urg-low' : '');
+          urgencyPill.textContent = task.urgency || 'Unset';
+
+          main.appendChild(summary);
+          main.appendChild(urgencyPill);
+
+          var meta = document.createElement('div');
+          meta.className = 'task-meta';
+
+          var assigned = document.createElement('span');
+          assigned.textContent = task.assigned_employee ? ('@' + task.assigned_employee) : '@unassigned';
+
+          var statusSpan = document.createElement('span');
+          var status = (task.status || '').toUpperCase().replace(/\s+/g, '');
+          statusSpan.className = 'pill ' +
+            (status === 'COMPLETED' ? 'status-completed' :
+             status === 'ONHOLD' ? 'status-hold' :
+             status === 'INPROGRESS' ? 'status-inprogress' :
+             status === 'CANCELLED' || status === 'CANCELED' ? 'status-cancelled' :
+             'status-pending');
+          statusSpan.textContent = task.status || 'Pending';
+
+          var due = document.createElement('span');
+          due.textContent = 'Due: ' + formatDate(task.due_date);
+
+          meta.appendChild(assigned);
+          meta.appendChild(statusSpan);
+          meta.appendChild(due);
+
+          if (task.customer_name) {
+            var customer = document.createElement('span');
+            customer.textContent = task.customer_name;
+            customer.style.fontStyle = 'italic';
+            meta.appendChild(customer);
+          }
+
+          row.appendChild(main);
+          row.appendChild(meta);
+
+          row.addEventListener('click', function() {
+            document.querySelectorAll('.task-row.selected').forEach(function(el) {
+              el.classList.remove('selected');
+            });
+            row.classList.add('selected');
+            selectedTask = currentTasks[idx];
+            renderDetails(selectedTask);
+          });
+
+          container.appendChild(row);
+        });
+      }
+
+      function formatDate(value) {
+        if (!value) return 'n/a';
+        if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+          // Already formatted as YYYY-MM-DD
+          return value.split(' ')[0];
+        }
+        try {
+          var d = new Date(value);
+          if (isNaN(d.getTime())) return 'n/a';
+          return d.toLocaleDateString();
+        } catch (e) {
+          return String(value);
+        }
+      }
+
+      function renderDetails(task) {
+        var panel = document.getElementById('details');
+        if (!task) {
+          panel.style.display = 'none';
+          panel.innerHTML = '';
+          return;
+        }
+
+        panel.style.display = 'block';
+        panel.innerHTML = '';
+
+        var header = document.createElement('div');
+        header.className = 'details-header';
+        header.textContent = 'Task Details';
+        panel.appendChild(header);
+
+        function addRow(label, value) {
+          var row = document.createElement('div');
+          row.className = 'details-row';
+
+          var labelEl = document.createElement('span');
+          labelEl.className = 'details-label';
+          labelEl.textContent = label + ':';
+
+          var valueEl = document.createElement('span');
+          valueEl.className = 'details-value';
+          if (value != null && value !== '') {
+            valueEl.textContent = value;
+          } else {
+            valueEl.className += ' empty';
+            valueEl.textContent = '(none)';
+          }
+
+          row.appendChild(labelEl);
+          row.appendChild(valueEl);
+          panel.appendChild(row);
+        }
+
+        addRow('Summary', task.task_summary);
+        addRow('Details', task.details);
+        addRow('Customer', task.customer_name);
+        addRow('Contact', task.contact_information);
+        addRow('Reached via', task['how did they reach out?']);
+        addRow('Urgency', task.urgency);
+        addRow('Assigned', task.assigned_employee);
+        addRow('Status', task.status);
+        addRow('Due Date', formatDate(task.due_date));
+        addRow('Pickup Date', formatDate(task.pickup_date));
+        addRow('Picked Up', task.picked_up);
+        addRow('Completed', task.completed);
+        addRow('Completed At', formatDate(task.completed_at));
+        addRow('Created At', formatDate(task.created_at));
+        addRow('Created By', task.created_by);
+        addRow('Source', task.source);
+        addRow('Last Updated', formatDate(task.LastUpdated));
+
+        var actions = document.createElement('div');
+        actions.className = 'actions';
+
+        var currentStatus = (task.status || '').toUpperCase();
+
+        // Show relevant action buttons based on current status
+        if (currentStatus !== 'IN PROGRESS' && currentStatus !== 'INPROGRESS') {
+          var btnInProgress = document.createElement('button');
+          btnInProgress.className = 'btn-warning';
+          btnInProgress.textContent = 'Mark In Progress';
+          btnInProgress.addEventListener('click', function() {
+            updateStatus(task, 'In Progress');
+          });
+          actions.appendChild(btnInProgress);
+        }
+
+        if (currentStatus !== 'COMPLETED') {
+          var btnCompleted = document.createElement('button');
+          btnCompleted.className = 'btn-primary';
+          btnCompleted.textContent = 'Mark Completed';
+          btnCompleted.addEventListener('click', function() {
+            updateStatus(task, 'Completed');
+          });
+          actions.appendChild(btnCompleted);
+        }
+
+        if (currentStatus === 'COMPLETED' || currentStatus === 'CANCELLED' || currentStatus === 'CANCELED') {
+          var btnPending = document.createElement('button');
+          btnPending.className = 'btn-secondary';
+          btnPending.textContent = 'Reopen (Pending)';
+          btnPending.addEventListener('click', function() {
+            updateStatus(task, 'Pending');
+          });
+          actions.appendChild(btnPending);
+        }
+
+        if (currentStatus !== 'ON HOLD' && currentStatus !== 'ONHOLD' && currentStatus !== 'COMPLETED') {
+          var btnHold = document.createElement('button');
+          btnHold.className = 'btn-secondary';
+          btnHold.textContent = 'Put On Hold';
+          btnHold.addEventListener('click', function() {
+            updateStatus(task, 'On Hold');
+          });
+          actions.appendChild(btnHold);
+        }
+
+        panel.appendChild(actions);
+      }
+
+      function updateStatus(task, newStatus) {
+        if (!task || !task.rowNumber) {
+          setStatus('No task selected.', true);
+          return;
+        }
+        setStatus('Updating status to "' + newStatus + '"...');
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            setStatus('Task updated to "' + newStatus + '". Refreshing...');
+            loadTasks();
+          })
+          .withFailureHandler(function(err) {
+            setStatus('Error: ' + (err && err.message ? err.message : err), true);
+          })
+          .setTaskStatus(task.rowNumber, newStatus);
+      }
+
+      function populateAssignedFilter() {
+        var select = document.getElementById('assignedFilter');
+        var existing = {};
+        var currentValue = select.value;
+
+        // Keep first option (All employees)
+        while (select.options.length > 1) {
+          select.remove(1);
+        }
+
+        currentTasks.forEach(function(task) {
+          var name = (task.assigned_employee || '').trim();
+          if (!name) return;
+          var key = name.toLowerCase();
+          if (existing[key]) return;
+          existing[key] = true;
+          var opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          select.appendChild(opt);
+        });
+
+        if (currentValue) {
+          select.value = currentValue;
+        }
+      }
+
+      function debounceSearch() {
+        if (searchTimeout) {
+          clearTimeout(searchTimeout);
+        }
+        searchTimeout = setTimeout(function() {
+          loadTasks();
+        }, 300);
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        // Set up filter change listeners
+        ['urgencyFilter', 'statusFilter', 'assignedFilter', 'sortBy', 'sortDir', 'onlyOpen'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener('change', loadTasks);
+        });
+
+        // Search box with debounce
+        var searchEl = document.getElementById('search');
+        if (searchEl) {
+          searchEl.addEventListener('input', debounceSearch);
+          searchEl.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+              if (searchTimeout) clearTimeout(searchTimeout);
+              loadTasks();
+            }
+          });
+        }
+
+        // Initial load
+        loadTasks();
+      });
+    </script>
+  </body>
+</html>

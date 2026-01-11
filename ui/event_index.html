@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      margin: 0;
+      padding: 12px;
+      color: #202124;
+    }
+
+    h2 {
+      font-size: 16px;
+      margin: 0 0 4px 0;
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: #5f6368;
+      margin-bottom: 8px;
+    }
+
+    .section {
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    label {
+      font-size: 11px;
+      font-weight: 500;
+      display: block;
+    }
+
+    select, input {
+      width: 100%;
+      padding: 4px 6px;
+      margin-top: 2px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+
+    button {
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+    }
+
+    .btn-secondary:hover {
+      background: #d0d0d0;
+    }
+
+    .btn-link {
+      background: none;
+      border: none;
+      color: #1a73e8;
+      padding: 0;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .btn-link:hover {
+      text-decoration: underline;
+    }
+
+    #globalMessage {
+      font-size: 11px;
+      margin-bottom: 6px;
+      min-height: 14px;
+    }
+
+    .msg-success { color: #0f9d58; }
+    .msg-error { color: #d93025; }
+    .msg-info { color: #1a73e8; }
+
+    .table-container {
+      max-height: 400px;
+      overflow: auto;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    th, td {
+      padding: 4px 6px;
+      border-bottom: 1px solid #f1f3f4;
+      text-align: left;
+    }
+
+    th {
+      background: #f1f3f4;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) td {
+      background: #fafafa;
+    }
+
+    tr:hover td {
+      background: #e8f0fe;
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .badge-open { background: #e8f0fe; color: #1967d2; }
+    .badge-locked { background: #e6f4ea; color: #0f9d58; }
+    .badge-closed { background: #e6f4ea; color: #0f9d58; }
+    .badge-unknown { background: #fce8e6; color: #c5221f; }
+
+    .rl-green { color: #0f9d58; }
+    .rl-amber { color: #f9ab00; }
+    .rl-red { color: #d93025; font-weight: 600; }
+
+    .margin-positive { color: #0f9d58; }
+    .margin-negative { color: #d93025; }
+
+    .summary-text {
+      font-size: 11px;
+      color: #5f6368;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #f1f3f4;
+    }
+
+    .legend {
+      font-size: 10px;
+      color: #5f6368;
+      max-width: 280px;
+      line-height: 1.4;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-row > div {
+      flex: 1;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .cell-link {
+      color: #1a73e8;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .cell-link:hover {
+      text-decoration: underline;
+    }
+
+    .no-data {
+      text-align: center;
+      color: #5f6368;
+      font-style: italic;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="section">
+    <h2>Event Index</h2>
+    <div class="subtitle">Quick snapshot of recent events, RL usage, and margins.</div>
+    <div id="globalMessage"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Filters</div>
+    <label>
+      Format
+      <select id="formatFilter">
+        <option value="">All formats</option>
+        <option value="Commander">Commander</option>
+        <option value="Constructed">Constructed</option>
+        <option value="Draft">Draft</option>
+        <option value="Sealed">Sealed</option>
+        <option value="Limited">Limited</option>
+        <option value="Standard">Standard</option>
+        <option value="Modern">Modern</option>
+        <option value="Pioneer">Pioneer</option>
+        <option value="Legacy">Legacy</option>
+      </select>
+    </label>
+    <div class="filter-row">
+      <div>
+        <label>
+          Start date
+          <input type="text" id="startDateFilter" placeholder="YYYY-MM-DD">
+        </label>
+      </div>
+      <div>
+        <label>
+          End date
+          <input type="text" id="endDateFilter" placeholder="YYYY-MM-DD">
+        </label>
+      </div>
+    </div>
+    <label>
+      Max events
+      <input type="number" id="limitFilter" value="100" min="1" max="500">
+    </label>
+    <button class="btn-primary" onclick="applyFilters()">Apply Filters</button>
+    <button class="btn-link" onclick="clearFilters()">Clear</button>
+  </div>
+
+  <div class="section">
+    <div id="summary" class="summary-text"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Events</div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Sheet</th>
+            <th>Format</th>
+            <th>Players</th>
+            <th>RL%</th>
+            <th>Margin</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="eventTableBody">
+          <tr><td colspan="7" class="no-data"><span class="loading-spinner"></span>Loading events...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="legend">
+      <strong>RL%</strong> = Prize spend vs. RL95 budget<br>
+      <strong>Margin</strong> = Entry revenue - prize spend<br>
+      <span class="rl-green">Green</span> &le;90% |
+      <span class="rl-amber">Amber</span> 90-95% |
+      <span class="rl-red">Red</span> &gt;95%
+    </div>
+    <button class="btn-secondary" onclick="google.script.host.close()">Close</button>
+  </div>
+
+  <script>
+    let currentEvents = [];
+    let totalEvents = 0;
+
+    /**
+     * Initialize the dashboard on load
+     */
+    function init() {
+      setGlobalMessage('info', 'Loading events...');
+      fetchEvents();
+    }
+
+    /**
+     * Apply current filter selections and fetch events
+     */
+    function applyFilters() {
+      fetchEvents();
+    }
+
+    /**
+     * Clear all filters and reload
+     */
+    function clearFilters() {
+      document.getElementById('formatFilter').value = '';
+      document.getElementById('startDateFilter').value = '';
+      document.getElementById('endDateFilter').value = '';
+      document.getElementById('limitFilter').value = '100';
+      fetchEvents();
+    }
+
+    /**
+     * Fetch events from server with current filters
+     */
+    function fetchEvents() {
+      const format = document.getElementById('formatFilter').value || null;
+      const startDate = document.getElementById('startDateFilter').value.trim() || null;
+      const endDate = document.getElementById('endDateFilter').value.trim() || null;
+      const limitVal = document.getElementById('limitFilter').value;
+      const limit = limitVal ? parseInt(limitVal, 10) : 100;
+
+      const filters = {
+        format: format,
+        startDate: startDate,
+        endDate: endDate,
+        limit: limit
+      };
+
+      setGlobalMessage('info', 'Loading events...');
+      showLoadingState();
+
+      google.script.run
+        .withSuccessHandler(renderEvents)
+        .withFailureHandler(showError)
+        .getEventIndex(filters);
+    }
+
+    /**
+     * Show loading state in table
+     */
+    function showLoadingState() {
+      const tbody = document.getElementById('eventTableBody');
+      tbody.innerHTML = '<tr><td colspan="7" class="no-data"><span class="loading-spinner"></span>Loading events...</td></tr>';
+    }
+
+    /**
+     * Render events table from server response
+     * @param {Object} result - Server response with events and totalEvents
+     */
+    function renderEvents(result) {
+      currentEvents = result && result.events ? result.events : [];
+      totalEvents = result && typeof result.totalEvents === 'number'
+        ? result.totalEvents
+        : currentEvents.length;
+
+      const tbody = document.getElementById('eventTableBody');
+      tbody.innerHTML = '';
+
+      if (!currentEvents.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 7;
+        td.className = 'no-data';
+        td.innerHTML = 'No events found for these filters.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      } else {
+        currentEvents.forEach(ev => {
+          const tr = document.createElement('tr');
+
+          tr.appendChild(tdText(formatDate(ev.date)));
+          tr.appendChild(tdSheetLink(ev.sheetName, ev.displayName));
+          tr.appendChild(tdText(ev.format || '—'));
+          tr.appendChild(tdText(ev.playerCount != null ? ev.playerCount : '—'));
+          tr.appendChild(tdRLPercent(ev.rlPercentUsed));
+          tr.appendChild(tdMargin(ev.margin));
+          tr.appendChild(tdStatus(ev.status));
+
+          tbody.appendChild(tr);
+        });
+      }
+
+      const summaryEl = document.getElementById('summary');
+      summaryEl.textContent = currentEvents.length + ' event(s) shown (out of ' + totalEvents + ' total).';
+
+      setGlobalMessage('', '');
+    }
+
+    /**
+     * Create text cell
+     */
+    function tdText(text) {
+      const td = document.createElement('td');
+      td.textContent = text;
+      return td;
+    }
+
+    /**
+     * Create sheet link cell (clicking navigates to sheet)
+     */
+    function tdSheetLink(sheetName, displayName) {
+      const td = document.createElement('td');
+      const span = document.createElement('span');
+      span.className = 'cell-link';
+      span.textContent = displayName || sheetName;
+      span.title = 'Click to navigate to sheet: ' + sheetName;
+      span.onclick = function() {
+        google.script.run.navigateToSheet(sheetName);
+      };
+      td.appendChild(span);
+      return td;
+    }
+
+    /**
+     * Create RL% cell with color coding
+     */
+    function tdRLPercent(value) {
+      const td = document.createElement('td');
+      if (value == null || isNaN(value)) {
+        td.textContent = '—';
+        return td;
+      }
+
+      const formatted = value.toFixed(1) + '%';
+      td.textContent = formatted;
+
+      // Color code based on RL band thresholds
+      if (value <= 90) {
+        td.className = 'rl-green';
+      } else if (value <= 95) {
+        td.className = 'rl-amber';
+      } else {
+        td.className = 'rl-red';
+      }
+
+      return td;
+    }
+
+    /**
+     * Create margin cell with color coding
+     */
+    function tdMargin(value) {
+      const td = document.createElement('td');
+      if (value == null || isNaN(value)) {
+        td.textContent = '—';
+        return td;
+      }
+
+      const formatted = '$' + value.toFixed(2);
+      td.textContent = formatted;
+
+      if (value >= 0) {
+        td.className = 'margin-positive';
+      } else {
+        td.className = 'margin-negative';
+      }
+
+      return td;
+    }
+
+    /**
+     * Create status badge cell
+     */
+    function tdStatus(status) {
+      const td = document.createElement('td');
+      const span = document.createElement('span');
+      span.classList.add('badge-status');
+      const s = (status || 'Unknown').toLowerCase();
+
+      if (s === 'open') {
+        span.classList.add('badge-open');
+        span.textContent = 'Open';
+      } else if (s === 'locked') {
+        span.classList.add('badge-locked');
+        span.textContent = 'Locked';
+      } else if (s === 'closed') {
+        span.classList.add('badge-closed');
+        span.textContent = 'Closed';
+      } else {
+        span.classList.add('badge-unknown');
+        span.textContent = status || 'Unknown';
+      }
+
+      td.appendChild(span);
+      return td;
+    }
+
+    /**
+     * Format date for display
+     */
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      // Already in YYYY-MM-DD format, convert to more readable MM/DD/YYYY
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return parts[1] + '/' + parts[2] + '/' + parts[0];
+      }
+      return dateStr;
+    }
+
+    /**
+     * Set global message with type styling
+     */
+    function setGlobalMessage(type, text) {
+      const el = document.getElementById('globalMessage');
+      if (!el) return;
+      el.className = '';
+      if (!text) {
+        el.innerHTML = '&nbsp;';
+        return;
+      }
+      if (type === 'success') el.classList.add('msg-success');
+      else if (type === 'error') el.classList.add('msg-error');
+      else if (type === 'info') el.classList.add('msg-info');
+
+      // Add spinner for loading messages
+      if (type === 'info' && text.toLowerCase().includes('loading')) {
+        el.innerHTML = '<span class="loading-spinner"></span>' + text;
+      } else {
+        el.textContent = text;
+      }
+    }
+
+    /**
+     * Show error message
+     */
+    function showError(err) {
+      const msg = (err && err.message) ? err.message : String(err);
+      console.error('Event Index Error:', err);
+      setGlobalMessage('error', msg);
+
+      // Also update table to show error
+      const tbody = document.getElementById('eventTableBody');
+      tbody.innerHTML = '<tr><td colspan="7" class="no-data">Error loading events. Check console for details.</td></tr>';
+
+      const summaryEl = document.getElementById('summary');
+      summaryEl.textContent = '';
+    }
+
+    // Initialize on load
+    window.onload = init;
+  </script>
+</body>
+</html>

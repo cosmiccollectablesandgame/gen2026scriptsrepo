@@ -1,0 +1,276 @@
+/**
+ * Preorders Status Service
+ * @fileoverview Service functions for the Preorder Status sidebar
+ * Provides data grouped by logical status buckets for tracking preorders
+ */
+
+// ============================================================================
+// MAIN SERVICE FUNCTION
+// ============================================================================
+
+/**
+ * Returns preorder records grouped by logical status buckets
+ * for the Preorder Status sidebar.
+ *
+ * @return {Object} {
+ *   pendingPayment: Array<PreorderRecord>,
+ *   readyForPickup: Array<PreorderRecord>,
+ *   completed: Array<PreorderRecord>
+ * }
+ */
+function getPreordersByStatus() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Preorders_Sold');
+
+  if (!sheet) {
+    return {
+      pendingPayment: [],
+      readyForPickup: [],
+      completed: []
+    };
+  }
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return {
+      pendingPayment: [],
+      readyForPickup: [],
+      completed: []
+    };
+  }
+
+  // Build column index map from headers
+  const headers = data[0];
+  const colIndex = buildColumnIndex_(headers);
+
+  // Initialize buckets
+  const pendingPayment = [];
+  const readyForPickup = [];
+  const completed = [];
+
+  // Process each data row (skip header)
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const record = buildPreorderRecord_(row, colIndex, i + 1); // 1-based row index
+
+    // Skip empty rows
+    if (!record.preorderId && !record.preferredNameId && !record.itemName) {
+      continue;
+    }
+
+    // Categorize into buckets
+    const bucket = categorizePreorder_(record);
+
+    switch (bucket) {
+      case 'PENDING_PAYMENT':
+        pendingPayment.push(record);
+        break;
+      case 'READY_FOR_PICKUP':
+        readyForPickup.push(record);
+        break;
+      case 'COMPLETED':
+        completed.push(record);
+        break;
+    }
+  }
+
+  return {
+    pendingPayment: pendingPayment,
+    readyForPickup: readyForPickup,
+    completed: completed
+  };
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Builds a column index map from header row
+ * @param {Array<string>} headers - Header row values
+ * @return {Object} Map of column name to index
+ * @private
+ */
+function buildColumnIndex_(headers) {
+  const index = {};
+  headers.forEach((header, i) => {
+    index[header] = i;
+  });
+  return index;
+}
+
+/**
+ * Builds a PreorderRecord object from a row
+ * @param {Array} row - Row data
+ * @param {Object} colIndex - Column index map
+ * @param {number} rowIndex - 1-based row number in sheet
+ * @return {Object} PreorderRecord object
+ * @private
+ */
+function buildPreorderRecord_(row, colIndex, rowIndex) {
+  return {
+    rowIndex: rowIndex,
+    preorderId: safeString_(row[colIndex['Preorder_ID']]),
+    preferredNameId: safeString_(row[colIndex['preferred_name_id']]),
+    contactInfo: safeString_(row[colIndex['Contact_Info']]),
+    setName: safeString_(row[colIndex['Set_Name']]),
+    itemName: safeString_(row[colIndex['Item_Name']]),
+    itemCode: safeString_(row[colIndex['Item_Code']]),
+    qty: safeNumber_(row[colIndex['Qty']]),
+    unitPrice: safeNumber_(row[colIndex['Unit_Price']]),
+    lineTotal: safeNumber_(row[colIndex['Line_Total']]),
+    totalDue: safeNumber_(row[colIndex['Total_Due']]),
+    depositPaid: safeNumber_(row[colIndex['Deposit_Paid']]),
+    balanceDue: safeNumber_(row[colIndex['Balance_Due']]),
+    targetPayoff: safeString_(row[colIndex['Target_Payoff']]),
+    status: safeString_(row[colIndex['Status']]),
+    notes: safeString_(row[colIndex['Notes']]),
+    createdAt: formatDateValue_(row[colIndex['Created_At']]),
+    createdBy: safeString_(row[colIndex['Created_By']])
+  };
+}
+
+/**
+ * Categorizes a preorder record into a status bucket
+ * @param {Object} record - PreorderRecord object
+ * @return {string} Bucket name: 'PENDING_PAYMENT', 'READY_FOR_PICKUP', or 'COMPLETED'
+ * @private
+ */
+function categorizePreorder_(record) {
+  const status = normalizeStatus_(record.status);
+  const balanceDue = record.balanceDue;
+
+  // Completed bucket: Completed, Picked Up, Closed, Canceled, Refunded
+  const completedStatuses = ['completed', 'picked up', 'closed', 'canceled', 'refunded'];
+  if (completedStatuses.includes(status)) {
+    return 'COMPLETED';
+  }
+
+  // Pending Payment: Balance > 0 and not completed/canceled/refunded
+  const terminalStatuses = ['canceled', 'refunded', 'completed', 'picked up', 'closed'];
+  if (balanceDue > 0 && !terminalStatuses.includes(status)) {
+    return 'PENDING_PAYMENT';
+  }
+
+  // Ready for Pickup: Balance == 0 and status is not terminal
+  // This includes statuses like 'Paid', 'Ready for Pickup', 'Awaiting Pickup', or empty
+  if (balanceDue === 0 && !completedStatuses.includes(status)) {
+    return 'READY_FOR_PICKUP';
+  }
+
+  // Default fallback - if balance is 0 but we haven't matched, treat as ready
+  if (balanceDue === 0) {
+    return 'READY_FOR_PICKUP';
+  }
+
+  // Everything else goes to pending payment
+  return 'PENDING_PAYMENT';
+}
+
+/**
+ * Normalizes status string for case-insensitive comparison
+ * @param {string} status - Raw status value
+ * @return {string} Lowercase trimmed status
+ * @private
+ */
+function normalizeStatus_(status) {
+  if (!status || typeof status !== 'string') {
+    return '';
+  }
+  return status.toLowerCase().trim();
+}
+
+/**
+ * Safely converts value to string
+ * @param {*} value - Value to convert
+ * @return {string} String value or empty string
+ * @private
+ */
+function safeString_(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  return String(value);
+}
+
+/**
+ * Safely converts value to number
+ * @param {*} value - Value to convert
+ * @return {number} Numeric value or 0
+ * @private
+ */
+function safeNumber_(value) {
+  if (value === undefined || value === null || value === '') {
+    return 0;
+  }
+  const num = Number(value);
+  return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Formats a date value for display
+ * @param {*} value - Date value (Date object or string)
+ * @return {string} Formatted date string
+ * @private
+ */
+function formatDateValue_(value) {
+  if (!value) {
+    return '';
+  }
+
+  if (value instanceof Date) {
+    try {
+      return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+    } catch (e) {
+      return String(value);
+    }
+  }
+
+  return String(value);
+}
+
+// ============================================================================
+// SHEET SCHEMA HELPER
+// ============================================================================
+
+/**
+ * Ensures the Preorders_Sold sheet exists with proper schema
+ * Called from build/repair routines
+ */
+function ensurePreordersSoldSchema() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('Preorders_Sold');
+
+  if (!sheet) {
+    sheet = ss.insertSheet('Preorders_Sold');
+    const headers = [
+      'Preorder_ID',
+      'preferred_name_id',
+      'Contact_Info',
+      'Set_Name',
+      'Item_Name',
+      'Item_Code',
+      'Qty',
+      'Unit_Price',
+      'Line_Total',
+      'Total_Due',
+      'Deposit_Paid',
+      'Balance_Due',
+      'Target_Payoff',
+      'Status',
+      'Notes',
+      'Created_At',
+      'Created_By'
+    ];
+    sheet.appendRow(headers);
+    sheet.setFrozenRows(1);
+
+    // Format header row
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setBackground('#4285f4');
+    headerRange.setFontColor('#ffffff');
+    headerRange.setFontWeight('bold');
+  }
+
+  return sheet;
+}

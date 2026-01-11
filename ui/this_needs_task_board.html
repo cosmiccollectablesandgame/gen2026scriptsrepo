@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ========================================
+       COSMIC GAMES - TASK DASHBOARD
+       Quick view, fast actions, zero friction
+       ======================================== */
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --cosmic-900: #0f172a;
+      --cosmic-800: #1e293b;
+      --cosmic-700: #334155;
+      --cosmic-600: #475569;
+      --cosmic-500: #64748b;
+      --cosmic-400: #94a3b8;
+      --cosmic-300: #cbd5e1;
+      --cosmic-200: #e2e8f0;
+      --cosmic-100: #f1f5f9;
+      --cosmic-50: #f8fafc;
+
+      --accent-primary: #3b82f6;
+      --accent-primary-hover: #2563eb;
+      --accent-primary-light: #dbeafe;
+      
+      --accent-success: #10b981;
+      --accent-success-light: #d1fae5;
+      
+      --accent-warning: #f59e0b;
+      --accent-warning-light: #fef3c7;
+      
+      --accent-danger: #ef4444;
+      --accent-danger-light: #fee2e2;
+
+      --accent-purple: #8b5cf6;
+      --accent-purple-light: #ede9fe;
+
+      --surface-bg: var(--cosmic-50);
+      --surface-card: #ffffff;
+      --text-primary: var(--cosmic-900);
+      --text-secondary: var(--cosmic-600);
+      --text-muted: var(--cosmic-400);
+      --text-inverse: #ffffff;
+      --border-default: var(--cosmic-200);
+
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07);
+      --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08);
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-full: 9999px;
+
+      --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+      --font-sans: 'DM Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      background: var(--surface-bg);
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* ========================================
+       LAYOUT
+       ======================================== */
+
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ========================================
+       HEADER
+       ======================================== */
+
+    .header {
+      background: var(--surface-card);
+      border-bottom: 1px solid var(--border-default);
+      padding: 16px 20px;
+      flex-shrink: 0;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .header-title {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .btn-new-task {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: linear-gradient(135deg, var(--accent-primary), #6366f1);
+      color: var(--text-inverse);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-family: var(--font-sans);
+    }
+
+    .btn-new-task:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-new-task svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ========================================
+       STATS BAR
+       ======================================== */
+
+    .stats-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stat-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--cosmic-100);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 2px solid transparent;
+    }
+
+    .stat-chip:hover {
+      background: var(--cosmic-200);
+    }
+
+    .stat-chip.active {
+      border-color: var(--accent-primary);
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+    }
+
+    .stat-chip .count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      background: var(--cosmic-200);
+      border-radius: var(--radius-full);
+      font-size: 0.6875rem;
+      font-weight: 700;
+    }
+
+    .stat-chip.active .count {
+      background: var(--accent-primary);
+      color: var(--text-inverse);
+    }
+
+    .stat-chip.overdue {
+      color: var(--accent-danger);
+    }
+
+    .stat-chip.overdue .count {
+      background: var(--accent-danger-light);
+      color: var(--accent-danger);
+    }
+
+    .stat-chip.overdue.active {
+      background: var(--accent-danger-light);
+      border-color: var(--accent-danger);
+    }
+
+    /* ========================================
+       SEARCH & FILTERS
+       ======================================== */
+
+    .search-container {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      border: 2px solid var(--border-default);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      background: var(--surface-card);
+      transition: border-color var(--transition-fast);
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: var(--text-muted);
+    }
+
+    .filters-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-select {
+      padding: 8px 28px 8px 12px;
+      border: 2px solid var(--border-default);
+      border-radius: var(--radius-md);
+      font-size: 0.8125rem;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      background: var(--surface-card);
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      transition: border-color var(--transition-fast);
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+    }
+
+    .filter-select.has-filter {
+      border-color: var(--accent-primary);
+      background-color: var(--accent-primary-light);
+    }
+
+    .btn-clear-filters {
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color var(--transition-fast);
+      font-family: var(--font-sans);
+    }
+
+    .btn-clear-filters:hover {
+      color: var(--accent-primary);
+    }
+
+    /* ========================================
+       TASK LIST
+       ======================================== */
+
+    .task-list-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 12px 20px 12px;
+    }
+
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-top: 8px;
+    }
+
+    .task-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+    }
+
+    .task-card:hover {
+      border-color: var(--cosmic-300);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    .task-card.completed {
+      opacity: 0.6;
+      background: var(--cosmic-50);
+    }
+
+    .task-card.overdue {
+      border-left: 4px solid var(--accent-danger);
+    }
+
+    .task-card.due-today {
+      border-left: 4px solid var(--accent-warning);
+    }
+
+    .task-card.critical {
+      border-left: 4px solid var(--accent-danger);
+      background: linear-gradient(135deg, var(--accent-danger-light) 0%, var(--surface-card) 30%);
+    }
+
+    .task-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .task-summary {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .task-card.completed .task-summary {
+      text-decoration: line-through;
+      color: var(--text-secondary);
+    }
+
+    .task-urgency {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+
+    .urgency-low {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .urgency-normal {
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+    }
+
+    .urgency-high {
+      background: var(--accent-warning-light);
+      color: #b45309;
+    }
+
+    .urgency-critical {
+      background: var(--accent-danger-light);
+      color: var(--accent-danger);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .task-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .task-meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .task-meta-item svg {
+      width: 14px;
+      height: 14px;
+      color: var(--text-muted);
+    }
+
+    .task-meta-item.overdue {
+      color: var(--accent-danger);
+      font-weight: 600;
+    }
+
+    .task-meta-item.overdue svg {
+      color: var(--accent-danger);
+    }
+
+    .task-meta-item.due-today {
+      color: var(--accent-warning);
+      font-weight: 600;
+    }
+
+    .task-meta-item.due-today svg {
+      color: var(--accent-warning);
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-default);
+    }
+
+    .task-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      background: var(--surface-card);
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-family: var(--font-sans);
+    }
+
+    .task-action-btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+      background: var(--accent-primary-light);
+    }
+
+    .task-action-btn.complete-btn:hover {
+      border-color: var(--accent-success);
+      color: var(--accent-success);
+      background: var(--accent-success-light);
+    }
+
+    .task-action-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ========================================
+       EMPTY STATE
+       ======================================== */
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      text-align: center;
+    }
+
+    .empty-state-icon {
+      width: 64px;
+      height: 64px;
+      color: var(--cosmic-300);
+      margin-bottom: 16px;
+    }
+
+    .empty-state-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0 0 8px 0;
+    }
+
+    .empty-state-text {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    /* ========================================
+       LOADING STATE
+       ======================================== */
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      gap: 16px;
+    }
+
+    .loading-spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--cosmic-200);
+      border-top-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    /* ========================================
+       TOAST NOTIFICATIONS
+       ======================================== */
+
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: var(--cosmic-800);
+      color: var(--text-inverse);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    .toast.success {
+      background: var(--accent-success);
+    }
+
+    .toast.error {
+      background: var(--accent-danger);
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .toast svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ========================================
+       SCROLLBAR
+       ======================================== */
+
+    .task-list-container::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .task-list-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .task-list-container::-webkit-scrollbar-thumb {
+      background: var(--cosmic-300);
+      border-radius: 3px;
+    }
+
+    .task-list-container::-webkit-scrollbar-thumb:hover {
+      background: var(--cosmic-400);
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- ========================================
+         HEADER
+         ======================================== -->
+    <div class="header">
+      <div class="header-top">
+        <h1 class="header-title">Task Dashboard</h1>
+        <button class="btn-new-task" onclick="openNewTask()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 5v14m-7-7h14"/>
+          </svg>
+          New Task
+        </button>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="stats-bar" id="statsBar">
+        <button class="stat-chip active" data-filter="open" onclick="setQuickFilter('open')">
+          <span>Open</span>
+          <span class="count" id="countOpen">0</span>
+        </button>
+        <button class="stat-chip overdue" data-filter="overdue" onclick="setQuickFilter('overdue')">
+          <span>Overdue</span>
+          <span class="count" id="countOverdue">0</span>
+        </button>
+        <button class="stat-chip" data-filter="today" onclick="setQuickFilter('today')">
+          <span>Due Today</span>
+          <span class="count" id="countToday">0</span>
+        </button>
+        <button class="stat-chip" data-filter="critical" onclick="setQuickFilter('critical')">
+          <span>Critical</span>
+          <span class="count" id="countCritical">0</span>
+        </button>
+        <button class="stat-chip" data-filter="all" onclick="setQuickFilter('all')">
+          <span>All Tasks</span>
+          <span class="count" id="countAll">0</span>
+        </button>
+      </div>
+
+      <!-- Search -->
+      <div class="search-container">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" 
+               class="search-input" 
+               id="searchInput"
+               placeholder="Search tasks..."
+               oninput="handleSearch()">
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-row">
+        <select class="filter-select" id="filterUrgency" onchange="handleFilterChange()">
+          <option value="">All Urgencies</option>
+          <option value="Critical">Critical</option>
+          <option value="High">High</option>
+          <option value="Normal">Normal</option>
+          <option value="Low">Low</option>
+        </select>
+        <select class="filter-select" id="filterStatus" onchange="handleFilterChange()">
+          <option value="">All Statuses</option>
+          <option value="New">New</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Waiting on Customer">Waiting</option>
+          <option value="Completed">Completed</option>
+          <option value="Canceled">Canceled</option>
+        </select>
+        <select class="filter-select" id="filterAssigned" onchange="handleFilterChange()">
+          <option value="">All Assignees</option>
+        </select>
+        <button class="btn-clear-filters" onclick="clearAllFilters()">Clear</button>
+      </div>
+    </div>
+
+    <!-- ========================================
+         TASK LIST
+         ======================================== -->
+    <div class="task-list-container">
+      <div class="task-list" id="taskList">
+        <!-- Tasks rendered here -->
+      </div>
+
+      <!-- Loading State -->
+      <div class="loading-state hidden" id="loadingState">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading tasks...</div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state hidden" id="emptyState">
+        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+        </svg>
+        <h3 class="empty-state-title" id="emptyTitle">All caught up!</h3>
+        <p class="empty-state-text" id="emptyText">No tasks match your current filters.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container hidden" id="toastContainer">
+    <div class="toast" id="toast">
+      <span id="toastMessage"></span>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================
+       STATE
+       ======================================== */
+
+    let state = {
+      tasks: [],
+      filteredTasks: [],
+      currentFilter: 'open',
+      searchQuery: '',
+      filters: {
+        urgency: '',
+        status: '',
+        assignedTo: ''
+      },
+      stats: {
+        open: 0,
+        overdue: 0,
+        today: 0,
+        critical: 0,
+        all: 0
+      }
+    };
+
+    let searchTimeout = null;
+
+    /* ========================================
+       INITIALIZATION
+       ======================================== */
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadAssignees();
+      loadTasks();
+    });
+
+    function loadAssignees() {
+      google.script.run
+        .withSuccessHandler(function(assignees) {
+          const select = document.getElementById('filterAssigned');
+          if (assignees && assignees.length > 0) {
+            assignees.forEach(name => {
+              const option = document.createElement('option');
+              option.value = name;
+              option.textContent = name;
+              select.appendChild(option);
+            });
+          }
+        })
+        .withFailureHandler(function(err) {
+          console.error('Failed to load assignees:', err);
+        })
+        .getEmployeeLogAssignees();
+    }
+
+    function loadTasks() {
+      showLoading(true);
+
+      const filters = {
+        onlyOpen: state.currentFilter === 'open',
+        urgency: state.filters.urgency || null,
+        status: state.filters.status || null,
+        assignedTo: state.filters.assignedTo || null,
+        search: state.searchQuery || null,
+        sortBy: 'due_date',
+        sortDir: 'asc',
+        limit: 200
+      };
+
+      google.script.run
+        .withSuccessHandler(onTasksLoaded)
+        .withFailureHandler(onTasksLoadError)
+        .getEmployeeLogTasks(filters);
+    }
+
+    function onTasksLoaded(tasks) {
+      state.tasks = tasks || [];
+      calculateStats();
+      applyClientFilters();
+      showLoading(false);
+    }
+
+    function onTasksLoadError(error) {
+      showLoading(false);
+      showToast('Failed to load tasks: ' + (error.message || error), 'error');
+    }
+
+    /* ========================================
+       STATS CALCULATION
+       ======================================== */
+
+    function calculateStats() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      let open = 0, overdue = 0, dueToday = 0, critical = 0;
+
+      state.tasks.forEach(task => {
+        const status = (task.status || '').toUpperCase();
+        const isOpen = !['COMPLETED', 'CANCELED', 'CANCELLED'].includes(status);
+        const urgency = (task.urgency || '').toUpperCase();
+        
+        if (isOpen) {
+          open++;
+          
+          if (urgency === 'CRITICAL') {
+            critical++;
+          }
+
+          if (task.due_date) {
+            const dueDate = new Date(task.due_date);
+            dueDate.setHours(0, 0, 0, 0);
+            
+            if (dueDate < today) {
+              overdue++;
+            } else if (dueDate.getTime() === today.getTime()) {
+              dueToday++;
+            }
+          }
+        }
+      });
+
+      state.stats = {
+        open: open,
+        overdue: overdue,
+        today: dueToday,
+        critical: critical,
+        all: state.tasks.length
+      };
+
+      updateStatsUI();
+    }
+
+    function updateStatsUI() {
+      document.getElementById('countOpen').textContent = state.stats.open;
+      document.getElementById('countOverdue').textContent = state.stats.overdue;
+      document.getElementById('countToday').textContent = state.stats.today;
+      document.getElementById('countCritical').textContent = state.stats.critical;
+      document.getElementById('countAll').textContent = state.stats.all;
+    }
+
+    /* ========================================
+       FILTERING
+       ======================================== */
+
+    function setQuickFilter(filter) {
+      state.currentFilter = filter;
+
+      // Update active state
+      document.querySelectorAll('.stat-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.filter === filter);
+      });
+
+      // Reset dropdown filters when using quick filter
+      if (filter !== 'all') {
+        document.getElementById('filterUrgency').value = '';
+        document.getElementById('filterStatus').value = '';
+        state.filters.urgency = '';
+        state.filters.status = '';
+      }
+
+      applyClientFilters();
+    }
+
+    function handleFilterChange() {
+      state.filters.urgency = document.getElementById('filterUrgency').value;
+      state.filters.status = document.getElementById('filterStatus').value;
+      state.filters.assignedTo = document.getElementById('filterAssigned').value;
+
+      // Update filter visual state
+      ['filterUrgency', 'filterStatus', 'filterAssigned'].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.toggle('has-filter', el.value !== '');
+      });
+
+      // Switch to 'all' quick filter if using dropdown filters
+      if (state.filters.urgency || state.filters.status || state.filters.assignedTo) {
+        state.currentFilter = 'all';
+        document.querySelectorAll('.stat-chip').forEach(chip => {
+          chip.classList.toggle('active', chip.dataset.filter === 'all');
+        });
+      }
+
+      applyClientFilters();
+    }
+
+    function handleSearch() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        state.searchQuery = document.getElementById('searchInput').value.trim();
+        applyClientFilters();
+      }, 250);
+    }
+
+    function clearAllFilters() {
+      state.searchQuery = '';
+      state.filters = { urgency: '', status: '', assignedTo: '' };
+      document.getElementById('searchInput').value = '';
+      document.getElementById('filterUrgency').value = '';
+      document.getElementById('filterStatus').value = '';
+      document.getElementById('filterAssigned').value = '';
+
+      ['filterUrgency', 'filterStatus', 'filterAssigned'].forEach(id => {
+        document.getElementById(id).classList.remove('has-filter');
+      });
+
+      setQuickFilter('open');
+    }
+
+    function applyClientFilters() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const searchLower = state.searchQuery.toLowerCase();
+
+      state.filteredTasks = state.tasks.filter(task => {
+        const status = (task.status || '').toUpperCase();
+        const urgency = (task.urgency || '').toUpperCase();
+        const isOpen = !['COMPLETED', 'CANCELED', 'CANCELLED'].includes(status);
+
+        // Quick filter
+        if (state.currentFilter === 'open' && !isOpen) return false;
+        
+        if (state.currentFilter === 'overdue') {
+          if (!isOpen) return false;
+          if (!task.due_date) return false;
+          const dueDate = new Date(task.due_date);
+          dueDate.setHours(0, 0, 0, 0);
+          if (dueDate >= today) return false;
+        }
+
+        if (state.currentFilter === 'today') {
+          if (!isOpen) return false;
+          if (!task.due_date) return false;
+          const dueDate = new Date(task.due_date);
+          dueDate.setHours(0, 0, 0, 0);
+          if (dueDate.getTime() !== today.getTime()) return false;
+        }
+
+        if (state.currentFilter === 'critical') {
+          if (!isOpen) return false;
+          if (urgency !== 'CRITICAL') return false;
+        }
+
+        // Dropdown filters
+        if (state.filters.urgency && urgency !== state.filters.urgency.toUpperCase()) {
+          return false;
+        }
+
+        if (state.filters.status && status !== state.filters.status.toUpperCase()) {
+          return false;
+        }
+
+        if (state.filters.assignedTo) {
+          const assigned = (task.assigned_employee || '').toLowerCase();
+          if (assigned !== state.filters.assignedTo.toLowerCase()) return false;
+        }
+
+        // Search filter
+        if (searchLower) {
+          const summary = (task.task_summary || '').toLowerCase();
+          const details = (task.details || '').toLowerCase();
+          const customer = (task.customer_name || '').toLowerCase();
+          if (!summary.includes(searchLower) && 
+              !details.includes(searchLower) && 
+              !customer.includes(searchLower)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      renderTasks();
+    }
+
+    /* ========================================
+       RENDERING
+       ======================================== */
+
+    function renderTasks() {
+      const container = document.getElementById('taskList');
+      const emptyState = document.getElementById('emptyState');
+
+      if (state.filteredTasks.length === 0) {
+        container.innerHTML = '';
+        updateEmptyState();
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      container.innerHTML = state.filteredTasks.map(task => {
+        const urgency = (task.urgency || 'Normal').toLowerCase();
+        const status = (task.status || '').toUpperCase();
+        const isCompleted = status === 'COMPLETED';
+        
+        let dueDateClass = '';
+        let dueDateText = '';
+        
+        if (task.due_date) {
+          const dueDate = new Date(task.due_date);
+          dueDate.setHours(0, 0, 0, 0);
+          const diffDays = Math.floor((dueDate - today) / (1000 * 60 * 60 * 24));
+          
+          if (diffDays < 0 && !isCompleted) {
+            dueDateClass = 'overdue';
+            dueDateText = `Overdue ${Math.abs(diffDays)}d`;
+          } else if (diffDays === 0) {
+            dueDateClass = 'due-today';
+            dueDateText = 'Due today';
+          } else if (diffDays === 1) {
+            dueDateText = 'Tomorrow';
+          } else {
+            dueDateText = formatDate(task.due_date);
+          }
+        }
+
+        const cardClasses = [
+          'task-card',
+          isCompleted ? 'completed' : '',
+          dueDateClass,
+          urgency === 'critical' && !isCompleted ? 'critical' : ''
+        ].filter(Boolean).join(' ');
+
+        return `
+          <div class="${cardClasses}" onclick="openTask(${task.rowNumber})" data-row="${task.rowNumber}">
+            <div class="task-header">
+              <div class="task-summary">${escapeHtml(task.task_summary || 'Untitled Task')}</div>
+              <span class="task-urgency urgency-${urgency}">${task.urgency || 'Normal'}</span>
+            </div>
+            <div class="task-meta">
+              ${dueDateText ? `
+                <span class="task-meta-item ${dueDateClass}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  ${dueDateText}
+                </span>
+              ` : ''}
+              ${task.assigned_employee ? `
+                <span class="task-meta-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  ${escapeHtml(task.assigned_employee)}
+                </span>
+              ` : ''}
+              <span class="task-meta-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 6v6l4 2"/>
+                </svg>
+                ${task.status || 'New'}
+              </span>
+            </div>
+            ${!isCompleted ? `
+              <div class="task-actions" onclick="event.stopPropagation()">
+                <button class="task-action-btn complete-btn" onclick="completeTask(${task.rowNumber})">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 13l4 4L19 7"/>
+                  </svg>
+                  Complete
+                </button>
+                <button class="task-action-btn" onclick="openTask(${task.rowNumber})">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                  </svg>
+                  Edit
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateEmptyState() {
+      const title = document.getElementById('emptyTitle');
+      const text = document.getElementById('emptyText');
+
+      if (state.currentFilter === 'overdue') {
+        title.textContent = 'No overdue tasks!';
+        text.textContent = 'You\'re on top of everything. Nice work!';
+      } else if (state.currentFilter === 'critical') {
+        title.textContent = 'No critical tasks';
+        text.textContent = 'All critical items have been handled.';
+      } else if (state.searchQuery) {
+        title.textContent = 'No matches';
+        text.textContent = 'Try a different search term.';
+      } else {
+        title.textContent = 'All caught up!';
+        text.textContent = 'No tasks match your current filters.';
+      }
+    }
+
+    /* ========================================
+       ACTIONS
+       ======================================== */
+
+    function openNewTask() {
+      google.script.run.openAssignmentModal();
+    }
+
+    function openTask(rowNumber) {
+      const task = state.tasks.find(t => t.rowNumber === rowNumber);
+      if (task && task.assignment_id) {
+        google.script.run.openAssignmentModal(task.assignment_id);
+      }
+    }
+
+    function completeTask(rowNumber) {
+      const card = document.querySelector(`[data-row="${rowNumber}"]`);
+      if (card) {
+        card.style.opacity = '0.5';
+        card.style.pointerEvents = 'none';
+      }
+
+      google.script.run
+        .withSuccessHandler(function() {
+          showToast('Task completed! ✓', 'success');
+          loadTasks(); // Reload to update stats
+        })
+        .withFailureHandler(function(err) {
+          if (card) {
+            card.style.opacity = '';
+            card.style.pointerEvents = '';
+          }
+          showToast('Failed to complete task', 'error');
+        })
+        .setTaskStatus(rowNumber, 'Completed');
+    }
+
+    /* ========================================
+       UI HELPERS
+       ======================================== */
+
+    function showLoading(show) {
+      const loading = document.getElementById('loadingState');
+      const list = document.getElementById('taskList');
+      const empty = document.getElementById('emptyState');
+
+      if (show) {
+        loading.classList.remove('hidden');
+        list.innerHTML = '';
+        empty.classList.add('hidden');
+      } else {
+        loading.classList.add('hidden');
+      }
+    }
+
+    function showToast(message, type = '') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.getElementById('toast');
+      const messageEl = document.getElementById('toastMessage');
+
+      messageEl.textContent = message;
+      toast.className = 'toast ' + type;
+      container.classList.remove('hidden');
+
+      setTimeout(() => {
+        container.classList.add('hidden');
+      }, 3000);
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+  </script>
+</body>
+</html>

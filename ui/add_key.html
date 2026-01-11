@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; font-size: 14px; }
+    h2 { color: #1a73e8; }
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    .color-swatches { display: flex; gap: 10px; margin-top: 10px; }
+    .swatch { width: 60px; height: 60px; border-radius: 8px; cursor: pointer; border: 3px solid transparent; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; }
+    .swatch.selected { border-color: #1a73e8; transform: scale(1.1); }
+    .swatch.red { background: #e53935; }
+    .swatch.blue { background: #1e88e5; }
+    .swatch.green { background: #43a047; }
+    .swatch.yellow { background: #fdd835; color: #333; }
+    .swatch.purple { background: #8e24aa; }
+    .key-counts { background: #f8f9fa; padding: 12px; border-radius: 4px; margin-top: 15px; font-size: 13px; }
+    .buttons { margin-top: 20px; text-align: right; }
+    button { padding: 10px 20px; margin-left: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-secondary { background: #f1f3f4; color: #333; }
+    #status { margin-top: 15px; padding: 10px; border-radius: 4px; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h2>Add Key</h2>
+
+  <label for="playerName">Player Name</label>
+  <input type="text" id="playerName" list="playerList" placeholder="Start typing...">
+  <datalist id="playerList"></datalist>
+
+  <label>Select Key Color</label>
+  <div class="color-swatches">
+    <div class="swatch red" data-color="Red" onclick="selectColor('Red')">R</div>
+    <div class="swatch blue" data-color="Blue" onclick="selectColor('Blue')">B</div>
+    <div class="swatch green" data-color="Green" onclick="selectColor('Green')">G</div>
+    <div class="swatch yellow" data-color="Yellow" onclick="selectColor('Yellow')">Y</div>
+    <div class="swatch purple" data-color="Purple" onclick="selectColor('Purple')">P</div>
+  </div>
+
+  <label for="qty">Quantity</label>
+  <input type="number" id="qty" value="1" min="1" max="10">
+
+  <div id="keyCounts" class="key-counts" style="display: none;"></div>
+
+  <div id="status"></div>
+
+  <div class="buttons">
+    <button class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+    <button class="btn-primary" onclick="addKey()">Add Key</button>
+  </div>
+
+  <script>
+    let selectedColor = null;
+    let playerKeys = null;
+
+    // Load canonical names
+    google.script.run.withSuccessHandler(populatePlayers).getCanonicalNames();
+
+    function populatePlayers(names) {
+      const datalist = document.getElementById('playerList');
+      names.forEach(name => {
+        datalist.innerHTML += `<option value="${name}">`;
+      });
+    }
+
+    // Load keys when player selected
+    document.getElementById('playerName').addEventListener('change', loadPlayerKeys);
+
+    function loadPlayerKeys() {
+      const name = document.getElementById('playerName').value;
+      if (!name) return;
+
+      google.script.run
+        .withSuccessHandler(displayKeys)
+        .getPlayerKeys(name);
+    }
+
+    function displayKeys(keys) {
+      playerKeys = keys;
+      if (!keys) {
+        document.getElementById('keyCounts').style.display = 'none';
+        return;
+      }
+
+      const div = document.getElementById('keyCounts');
+      div.innerHTML = `<strong>Current Keys:</strong><br>
+        Red: ${keys.Red || 0} | Blue: ${keys.Blue || 0} | Green: ${keys.Green || 0} |
+        Yellow: ${keys.Yellow || 0} | Purple: ${keys.Purple || 0} | Rainbow: ${keys.RainbowEligible || 0}`;
+      div.style.display = 'block';
+    }
+
+    function selectColor(color) {
+      selectedColor = color;
+      document.querySelectorAll('.swatch').forEach(s => s.classList.remove('selected'));
+      document.querySelector(`.swatch.${color.toLowerCase()}`).classList.add('selected');
+    }
+
+    function addKey() {
+      const name = document.getElementById('playerName').value;
+      const qty = parseInt(document.getElementById('qty').value);
+
+      if (!name) {
+        showStatus('Please enter a player name', 'error');
+        return;
+      }
+
+      if (!selectedColor) {
+        showStatus('Please select a key color', 'error');
+        return;
+      }
+
+      showStatus('Adding key...', 'info');
+
+      google.script.run
+        .withSuccessHandler(onSuccess)
+        .withFailureHandler(onFailure)
+        .addKey(name, selectedColor, qty);
+    }
+
+    function onSuccess(result) {
+      showStatus(`✓ Added ${result.added} ${selectedColor} key(s). Total: ${result.after}`, 'success');
+      loadPlayerKeys();
+    }
+
+    function onFailure(error) {
+      showStatus(`Error: ${error.message}`, 'error');
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    /* Base styles */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      padding: 16px;
+      margin: 0;
+      color: #333;
+    }
+
+    /* Header */
+    .header {
+      margin-bottom: 16px;
+    }
+
+    .header h2 {
+      margin: 0 0 4px 0;
+      font-size: 16px;
+      color: #1a73e8;
+    }
+
+    .header p {
+      margin: 0;
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* Scan section */
+    .scan-section {
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .scan-section p {
+      margin: 0 0 10px 0;
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    .btn-primary:disabled {
+      background: #94c2f8;
+      cursor: not-allowed;
+    }
+
+    .btn-apply {
+      background: #34a853;
+      color: white;
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .btn-apply:hover {
+      background: #2d8e47;
+    }
+
+    .btn-apply:disabled {
+      background: #94d3a2;
+      cursor: not-allowed;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      background: #f1f3f4;
+      padding: 10px 12px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+
+    .stats-bar .stat {
+      display: inline-block;
+      margin-right: 16px;
+    }
+
+    .stats-bar .stat-value {
+      font-weight: 600;
+      color: #1a73e8;
+    }
+
+    /* Unknown names list */
+    .unknown-list {
+      max-height: 380px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+    }
+
+    /* Unknown card */
+    .unknown-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: #fff;
+    }
+
+    .unknown-card.resolved {
+      background: #f8f9fa;
+      opacity: 0.7;
+    }
+
+    .name-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .name-context {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .suggestions-row {
+      margin-bottom: 8px;
+    }
+
+    .suggestions-label {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .suggestion-pill {
+      display: inline-block;
+      background: #e8f0fe;
+      color: #1a73e8;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      margin-right: 4px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .suggestion-pill:hover {
+      background: #d2e3fc;
+    }
+
+    .suggestion-pill.best {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .suggestion-pill.best:hover {
+      background: #1557b0;
+    }
+
+    /* Mapping input row */
+    .mapping-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .mapping-row input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .mapping-row input:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+
+    /* Messages */
+    .msg {
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .msg-success {
+      background: #e6f4ea;
+      color: #1e7e34;
+    }
+
+    .msg-error {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .msg-info {
+      background: #e8f0fe;
+      color: #1a73e8;
+    }
+
+    #globalMessage {
+      margin-top: 12px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 30px 20px;
+      color: #666;
+    }
+
+    .empty-state .icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    /* Loading state */
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #e0e0e0;
+      border-top-color: #1a73e8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Card result message */
+    .card-result {
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Detect & Fix Player Names</h2>
+    <p>Scan event sheets for unknown names and map them to PreferredNames.</p>
+  </div>
+
+  <div class="scan-section">
+    <p>Step 1: Scan events for names not in PreferredNames.</p>
+    <button id="scanBtn" class="btn btn-primary" onclick="onScanClick()">
+      Scan for Unknown Names
+    </button>
+  </div>
+
+  <div id="statsBar" class="stats-bar" style="display: none;">
+    <span class="stat">Unknown: <span class="stat-value" id="unknownCount">0</span></span>
+    <span class="stat">Canonical: <span class="stat-value" id="canonicalCount">0</span></span>
+    <span class="stat">Events: <span class="stat-value" id="eventCount">0</span></span>
+  </div>
+
+  <div id="unknownList" class="unknown-list"></div>
+
+  <div id="globalMessage"></div>
+
+  <script>
+    /**
+     * State
+     */
+    let unknownGroups = []; // Grouped by rawName
+    let scanResult = null;
+
+    /**
+     * Initialize on load
+     */
+    function init() {
+      // Ready state - wait for user to click scan
+    }
+
+    /**
+     * Handle scan button click
+     */
+    function onScanClick() {
+      const btn = document.getElementById('scanBtn');
+      const listEl = document.getElementById('unknownList');
+
+      btn.disabled = true;
+      btn.textContent = 'Scanning...';
+      listEl.innerHTML = '<div class="loading"><div class="spinner"></div><p>Scanning event sheets...</p></div>';
+
+      document.getElementById('statsBar').style.display = 'none';
+      clearGlobalMessage();
+
+      google.script.run
+        .withSuccessHandler(renderUnknowns)
+        .withFailureHandler(showError)
+        .scanForUnknownPlayers();
+    }
+
+    /**
+     * Render the unknown names list
+     * @param {Object} result - Result from scanForUnknownPlayers
+     */
+    function renderUnknowns(result) {
+      scanResult = result;
+
+      const btn = document.getElementById('scanBtn');
+      btn.disabled = false;
+      btn.textContent = 'Scan for Unknown Names';
+
+      // Update stats
+      document.getElementById('statsBar').style.display = 'block';
+      document.getElementById('canonicalCount').textContent = result.canonicalCount;
+      document.getElementById('eventCount').textContent = result.eventSheetsScanned;
+
+      // Group unknowns by rawName
+      const groups = {};
+      result.unknowns.forEach(u => {
+        const key = u.rawName.toLowerCase();
+        if (!groups[key]) {
+          groups[key] = {
+            rawName: u.rawName,
+            occurrences: [],
+            suggestedMatch: u.suggestedMatch,
+            suggestions: u.suggestions || []
+          };
+        }
+        groups[key].occurrences.push({
+          sheetName: u.sheetName,
+          rowIndex: u.rowIndex,
+          colIndex: u.colIndex
+        });
+      });
+
+      unknownGroups = Object.values(groups);
+      document.getElementById('unknownCount').textContent = unknownGroups.length;
+
+      const listEl = document.getElementById('unknownList');
+
+      if (unknownGroups.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">&#10004;</div>
+            <p><strong>No unknown names found.</strong></p>
+            <p>Everything matches PreferredNames.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Render cards
+      let html = '';
+      unknownGroups.forEach((group, idx) => {
+        const rawName = escapeHtml(group.rawName);
+        const occCount = group.occurrences.length;
+        const sheets = [...new Set(group.occurrences.map(o => o.sheetName))];
+        const contextText = `Found in ${occCount} place(s): ${sheets.slice(0, 3).join(', ')}${sheets.length > 3 ? '...' : ''}`;
+
+        // Suggestions HTML
+        let suggestionsHtml = '';
+        if (group.suggestedMatch || (group.suggestions && group.suggestions.length > 0)) {
+          suggestionsHtml = '<div class="suggestions-row"><div class="suggestions-label">Suggestions:</div>';
+
+          // Best match first
+          if (group.suggestedMatch) {
+            suggestionsHtml += `<span class="suggestion-pill best" onclick="fillSuggestion(${idx}, '${escapeJs(group.suggestedMatch)}')">${escapeHtml(group.suggestedMatch)}</span>`;
+          }
+
+          // Other suggestions
+          group.suggestions.forEach(s => {
+            if (s !== group.suggestedMatch) {
+              suggestionsHtml += `<span class="suggestion-pill" onclick="fillSuggestion(${idx}, '${escapeJs(s)}')">${escapeHtml(s)}</span>`;
+            }
+          });
+
+          suggestionsHtml += '</div>';
+        }
+
+        html += `
+          <div class="unknown-card" id="card-${idx}">
+            <div class="name-title">${rawName}</div>
+            <div class="name-context">${contextText}</div>
+            ${suggestionsHtml}
+            <div class="mapping-row">
+              <input type="text" id="input-${idx}" placeholder="Map to name..." />
+              <button class="btn btn-apply" id="applyBtn-${idx}" onclick="applyMapping(${idx})">Apply</button>
+            </div>
+            <div id="result-${idx}" class="card-result"></div>
+          </div>
+        `;
+      });
+
+      listEl.innerHTML = html;
+    }
+
+    /**
+     * Fill the input with a suggested name
+     * @param {number} idx - Card index
+     * @param {string} suggested - Suggested name
+     */
+    function fillSuggestion(idx, suggested) {
+      const input = document.getElementById('input-' + idx);
+      if (input) {
+        input.value = suggested;
+        input.focus();
+      }
+    }
+
+    /**
+     * Apply mapping for a specific unknown name
+     * @param {number} idx - Card index
+     */
+    function applyMapping(idx) {
+      const group = unknownGroups[idx];
+      if (!group) return;
+
+      const input = document.getElementById('input-' + idx);
+      const btn = document.getElementById('applyBtn-' + idx);
+      const resultEl = document.getElementById('result-' + idx);
+      const targetName = (input.value || '').trim();
+
+      if (!targetName) {
+        resultEl.innerHTML = '<div class="msg msg-error">Enter a target name or click a suggestion.</div>';
+        return;
+      }
+
+      // Disable UI while processing
+      btn.disabled = true;
+      btn.textContent = 'Working...';
+      input.disabled = true;
+      resultEl.innerHTML = '';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          handleMapResult(idx, result);
+        })
+        .withFailureHandler(function(error) {
+          handleMapError(idx, error);
+        })
+        .mapPlayerName(group.rawName, targetName);
+    }
+
+    /**
+     * Handle successful mapping result
+     * @param {number} idx - Card index
+     * @param {Object} result - Result from mapPlayerName
+     */
+    function handleMapResult(idx, result) {
+      const btn = document.getElementById('applyBtn-' + idx);
+      const input = document.getElementById('input-' + idx);
+      const resultEl = document.getElementById('result-' + idx);
+      const card = document.getElementById('card-' + idx);
+
+      if (result.success) {
+        // Show success message
+        let msg = result.message;
+        if (result.createdNewPlayer) {
+          msg += ' (New player created)';
+        }
+        resultEl.innerHTML = '<div class="msg msg-success">' + escapeHtml(msg) + '</div>';
+
+        // Mark card as resolved
+        card.classList.add('resolved');
+        btn.textContent = 'Done';
+        btn.disabled = true;
+        input.disabled = true;
+      } else {
+        // Show error, re-enable controls
+        resultEl.innerHTML = '<div class="msg msg-error">' + escapeHtml(result.message) + '</div>';
+        btn.disabled = false;
+        btn.textContent = 'Apply';
+        input.disabled = false;
+      }
+    }
+
+    /**
+     * Handle mapping error
+     * @param {number} idx - Card index
+     * @param {Error} error - Error object
+     */
+    function handleMapError(idx, error) {
+      const btn = document.getElementById('applyBtn-' + idx);
+      const input = document.getElementById('input-' + idx);
+      const resultEl = document.getElementById('result-' + idx);
+
+      resultEl.innerHTML = '<div class="msg msg-error">Error: ' + escapeHtml(error.message || 'Unknown error') + '</div>';
+      btn.disabled = false;
+      btn.textContent = 'Apply';
+      input.disabled = false;
+    }
+
+    /**
+     * Show global error message
+     * @param {Error} error - Error object
+     */
+    function showError(error) {
+      const btn = document.getElementById('scanBtn');
+      btn.disabled = false;
+      btn.textContent = 'Scan for Unknown Names';
+
+      document.getElementById('unknownList').innerHTML = '';
+
+      const msgEl = document.getElementById('globalMessage');
+      msgEl.innerHTML = '<div class="msg msg-error">Error: ' + escapeHtml(error.message || 'An unexpected error occurred.') + '</div>';
+    }
+
+    /**
+     * Clear global message
+     */
+    function clearGlobalMessage() {
+      document.getElementById('globalMessage').innerHTML = '';
+    }
+
+    /**
+     * Escape HTML entities
+     * @param {string} str - String to escape
+     * @return {string} Escaped string
+     */
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    /**
+     * Escape string for use in JavaScript
+     * @param {string} str - String to escape
+     * @return {string} Escaped string
+     */
+    function escapeJs(str) {
+      return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+    }
+
+    // Initialize on load
+    window.onload = init;
+  </script>
+</body>
+</html>

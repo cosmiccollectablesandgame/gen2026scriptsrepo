@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      margin: 0;
+      padding: 16px;
+      color: #333;
+      background: #fafafa;
+    }
+
+    h2 {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a73e8;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+
+    .section {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #5f6368;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .check {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 8px;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    .check:last-child {
+      margin-bottom: 0;
+    }
+
+    .check input[type="checkbox"] {
+      margin: 2px 10px 0 0;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .check span {
+      user-select: none;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: #5f6368;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]:focus, textarea:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #f1f3f4;
+      color: #333;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #e8eaed;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #1557b0;
+    }
+
+    .status {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+    }
+
+    .status.visible {
+      display: block;
+    }
+
+    .status.info {
+      background: #e8f0fe;
+      color: #1967d2;
+    }
+
+    .status.success {
+      background: #e6f4ea;
+      color: #137333;
+    }
+
+    .status.error {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .optional-tag {
+      font-size: 10px;
+      color: #999;
+      font-weight: normal;
+      margin-left: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Daily Close Checklist</h2>
+  <p class="subtitle">Check off what you've completed, then sign with your initials.</p>
+
+  <!-- Events & Prizes -->
+  <div class="section">
+    <div class="section-title">Events & Prizes</div>
+    <label class="check">
+      <input type="checkbox" value="Event rosters created in tournament software">
+      <span>Event rosters created in tournament software</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" value="End-of-event prizes previewed">
+      <span>End-of-event prizes previewed</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" value="End-of-event prizes locked in">
+      <span>End-of-event prizes locked in</span>
+    </label>
+  </div>
+
+  <!-- Missions & Points -->
+  <div class="section">
+    <div class="section-title">Missions & Points</div>
+    <label class="check">
+      <input type="checkbox" value="Attendance scanned (Scan Attendance)">
+      <span>Attendance scanned (Scan Attendance)</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" value="BP Totals synced">
+      <span>BP Totals synced</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" value="Keys updated from paper notes">
+      <span>Keys updated from paper notes</span>
+    </label>
+  </div>
+
+  <!-- Preorders -->
+  <div class="section">
+    <div class="section-title">Preorders</div>
+    <label class="check">
+      <input type="checkbox" value="Pending payments reviewed">
+      <span>Pending payments reviewed</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" value="Ready-for-pickup preorders checked">
+      <span>Ready-for-pickup preorders checked</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" value="Pickups marked as complete">
+      <span>Pickups marked as complete</span>
+    </label>
+  </div>
+
+  <!-- Cleanup & Ops -->
+  <div class="section">
+    <div class="section-title">Cleanup & Ops</div>
+    <label class="check">
+      <input type="checkbox" value="Events closed in external software">
+      <span>Events closed in external software</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" value="Store Credit entries double-checked">
+      <span>Store Credit entries double-checked</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" value="Tabs organized">
+      <span>Tabs organized <span class="optional-tag">(optional)</span></span>
+    </label>
+  </div>
+
+  <!-- Signature -->
+  <div class="section">
+    <div class="form-group">
+      <label for="staffInitials">Staff Initials</label>
+      <input id="staffInitials" type="text" maxlength="5" placeholder="Your initials (e.g., JD)">
+    </div>
+    <div class="form-group">
+      <label for="notes">Notes <span class="optional-tag">(optional)</span></label>
+      <textarea id="notes" rows="2" placeholder="Any issues or notes for tomorrow..."></textarea>
+    </div>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <div class="buttons">
+    <button class="btn-secondary" onclick="onCancel()">Cancel</button>
+    <button id="submitBtn" class="btn-primary" onclick="onSubmit()">Sign & Submit</button>
+  </div>
+
+  <script>
+    /**
+     * Handles form submission
+     */
+    function onSubmit() {
+      var staffInitials = document.getElementById('staffInitials').value.trim();
+      var notes = document.getElementById('notes').value.trim();
+
+      // Validate initials
+      if (!staffInitials) {
+        showStatus('Please enter your initials.', 'error');
+        document.getElementById('staffInitials').focus();
+        return;
+      }
+
+      // Collect checked items
+      var checked = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+        .map(function(cb) { return cb.value; });
+
+      // Build payload
+      var payload = {
+        staffInitials: staffInitials,
+        completedItems: checked,
+        notes: notes
+      };
+
+      // Disable submit button and show loading
+      var submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      showStatus('Submitting...', 'info');
+
+      // Submit to backend
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showStatus('Checklist logged. Thank you! (' + (result.itemsCount || 0) + ' items checked)', 'success');
+          setTimeout(function() {
+            google.script.host.close();
+          }, 1200);
+        })
+        .withFailureHandler(function(err) {
+          submitBtn.disabled = false;
+          var message = err && err.message ? err.message : String(err);
+          showStatus('Error: ' + message, 'error');
+        })
+        .submitDailyCloseChecklist(payload);
+    }
+
+    /**
+     * Closes the dialog
+     */
+    function onCancel() {
+      google.script.host.close();
+    }
+
+    /**
+     * Shows a status message
+     * @param {string} message - The message to display
+     * @param {string} type - 'info', 'success', or 'error'
+     */
+    function showStatus(message, type) {
+      var status = document.getElementById('status');
+      status.textContent = message;
+      status.className = 'status visible ' + type;
+    }
+
+    // Focus initials field on load
+    document.getElementById('staffInitials').focus();
+  </script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; font-size: 14px; }
+    h2 { color: #1a73e8; margin-bottom: 5px; }
+    .subtitle { color: #5f6368; font-size: 13px; margin-top: 0; margin-bottom: 20px; }
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    }
+    .hint { color: #5f6368; font-size: 12px; margin-top: 6px; }
+    .buttons { margin-top: 24px; text-align: right; }
+    button {
+      padding: 10px 20px;
+      margin-left: 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #1557b0; }
+    .btn-secondary { background: #f1f3f4; color: #333; }
+    .btn-secondary:hover { background: #e8eaed; }
+    #message {
+      margin-top: 15px;
+      padding: 10px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      display: none;
+    }
+    .msg-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block; }
+    .msg-info { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; display: block; }
+    .msg-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block; }
+    .msg-loading { background: #e8f4fd; color: #0c5460; border: 1px solid #bee5eb; display: block; }
+    .inline-error { color: #dc3545; font-size: 12px; margin-top: 4px; display: none; }
+    .inline-error.visible { display: block; }
+  </style>
+</head>
+<body>
+  <h2>Add New Player</h2>
+  <p class="subtitle">Create a new player in PreferredNames and auto-provision their records.</p>
+
+  <label for="preferredNameInput">Preferred Player Name</label>
+  <input
+    type="text"
+    id="preferredNameInput"
+    placeholder="e.g. Alice S."
+    autocomplete="off"
+  >
+  <div id="nameError" class="inline-error">Name is required.</div>
+  <p class="hint">Use the name you want to see on all reports and leaderboards.</p>
+
+  <div id="message"></div>
+
+  <div class="buttons">
+    <button class="btn-secondary" type="button" onclick="google.script.host.close()">Close</button>
+    <button class="btn-primary" id="addButton" onclick="onAddClicked()">Add Player</button>
+  </div>
+
+  <script>
+    var isSubmitting = false;
+
+    // Focus input on load
+    document.getElementById('preferredNameInput').focus();
+
+    // Submit on Enter key
+    document.getElementById('preferredNameInput').addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        onAddClicked();
+      }
+    });
+
+    // Clear error on input
+    document.getElementById('preferredNameInput').addEventListener('input', function() {
+      document.getElementById('nameError').classList.remove('visible');
+    });
+
+    /**
+     * Handles Add Player button click
+     */
+    function onAddClicked() {
+      if (isSubmitting) return;
+
+      var nameInput = document.getElementById('preferredNameInput');
+      var preferredName = nameInput.value.trim();
+
+      // Validate
+      if (!preferredName) {
+        document.getElementById('nameError').classList.add('visible');
+        nameInput.focus();
+        return;
+      }
+
+      // Clear previous errors
+      document.getElementById('nameError').classList.remove('visible');
+
+      // Disable button and show loading
+      setSubmitting(true);
+      setMessage('loading', 'Adding player...');
+
+      // Call server
+      google.script.run
+        .withSuccessHandler(handleAddResult)
+        .withFailureHandler(handleError)
+        .addNewPlayer(preferredName);
+    }
+
+    /**
+     * Handles successful server response
+     * @param {Object} result - Server response
+     */
+    function handleAddResult(result) {
+      setSubmitting(false);
+
+      if (result.success && result.created) {
+        // New player added
+        setMessage('success', 'Player "' + escapeHtml(result.preferredName) + '" added and provisioned.');
+        // Clear input for adding another player
+        document.getElementById('preferredNameInput').value = '';
+        document.getElementById('preferredNameInput').focus();
+      } else if (result.success && !result.created) {
+        // Player already exists
+        setMessage('info', 'Player "' + escapeHtml(result.preferredName) + '" already exists in PreferredNames (row ' + result.rowIndex + ').');
+      } else {
+        // Error
+        setMessage('error', result.message || 'Failed to add player.');
+      }
+    }
+
+    /**
+     * Handles server error
+     * @param {Error} err - Error object
+     */
+    function handleError(err) {
+      setSubmitting(false);
+      setMessage('error', 'Error: ' + (err.message || 'Unknown error occurred.'));
+    }
+
+    /**
+     * Sets the message display
+     * @param {string} type - Message type: success, info, error, loading
+     * @param {string} text - Message text
+     */
+    function setMessage(type, text) {
+      var msgDiv = document.getElementById('message');
+      msgDiv.textContent = text;
+      msgDiv.className = 'msg-' + type;
+    }
+
+    /**
+     * Sets the submitting state
+     * @param {boolean} submitting - Whether currently submitting
+     */
+    function setSubmitting(submitting) {
+      isSubmitting = submitting;
+      document.getElementById('addButton').disabled = submitting;
+    }
+
+    /**
+     * Escapes HTML special characters
+     * @param {string} text - Text to escape
+     * @return {string} Escaped text
+     */
+    function escapeHtml(text) {
+      var div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

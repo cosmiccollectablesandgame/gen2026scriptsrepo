@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>Smart Roster Import</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font: 16px/1.5 system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    .container {
+      background: rgba(255,255,255,0.95);
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 700px;
+      margin: 0 auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h2 {
+      margin: 0 0 10px 0;
+      color: #f5576c;
+      font-size: 24px;
+    }
+    .info-box {
+      background: #e1f5fe;
+      border-left: 4px solid #0288d1;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #01579b;
+    }
+    .info-box strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 280px;
+      padding: 15px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font: 14px/1.4 'Courier New', monospace;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    textarea:focus {
+      border-color: #f5576c;
+      outline: none;
+    }
+    .btn-group {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      flex: 1;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #f5576c;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #e04858;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+    #preview {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      display: none;
+    }
+    #preview h3 {
+      margin: 0 0 15px 0;
+      color: #f5576c;
+      font-size: 18px;
+    }
+    .player-list {
+      max-height: 250px;
+      overflow-y: auto;
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+    .player-item {
+      padding: 10px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+    }
+    .player-item:last-child {
+      border-bottom: none;
+    }
+    .player-num {
+      font-weight: bold;
+      color: #f5576c;
+      margin-right: 12px;
+      min-width: 35px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🎯 Smart Roster Import</h2>
+    
+    <div class="info-box">
+      <strong>📋 Paste your roster in ANY format!</strong>
+      Supports: numbered lists, comma-separated, line-by-line, records, notes
+      <br><br>
+      <strong>Examples:</strong><br>
+      • "1. John Smith<br>2. Jane Doe - 3-0"<br>
+      • "John Smith, Jane Doe, Bob Wilson"<br>
+      • "John Smith (Commander)<br>Jane Doe 2-1"
+    </div>
+    
+    <textarea id="rosterInput" placeholder="Paste your roster here...
+
+Examples:
+1. John Smith
+2. Jane Doe - 3-0
+3. Bob Wilson (playing Orzhov)
+
+Or simply:
+John, Jane, Bob"></textarea>
+    
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="parseRoster()">
+        🔍 Parse & Preview
+      </button>
+      <button class="btn btn-primary" id="importBtn" onclick="importRoster()" style="display:none;">
+        ✅ Import to Active Sheet
+      </button>
+      <button class="btn btn-secondary" onclick="google.script.host.close()">
+        Cancel
+      </button>
+    </div>
+    
+    <div id="preview">
+      <h3>✅ Parsed Players (<span id="playerCount">0</span>)</h3>
+      <div class="player-list" id="playerList"></div>
+    </div>
+  </div>
+  
+  <script>
+    let parsedPlayers = [];
+    
+    function parseRoster() {
+      const input = document.getElementById('rosterInput').value;
+      if (!input.trim()) {
+        alert('⚠️ Please paste some roster data first!');
+        return;
+      }
+      
+      google.script.run
+        .withSuccessHandler(showPreview)
+        .withFailureHandler(err => alert(`❌ Parse error: ${err}`))
+        .smartParseRoster(input);
+    }
+    
+    function showPreview(players) {
+      parsedPlayers = players;
+      const preview = document.getElementById('preview');
+      const playerList = document.getElementById('playerList');
+      const playerCount = document.getElementById('playerCount');
+      const importBtn = document.getElementById('importBtn');
+      
+      if (players.length === 0) {
+        playerList.innerHTML = '<p style="color: red;">❌ No valid players found. Please check your input.</p>';
+        importBtn.style.display = 'none';
+      } else {
+        playerCount.textContent = players.length;
+        
+        // Check if we have [rank, name] pairs or just names
+        const hasRanks = Array.isArray(players[0]);
+        
+        if (hasRanks) {
+          playerList.innerHTML = players
+            .map(([rank, name]) => `
+              <div class="player-item">
+                <span class="player-num">${rank > 0 ? rank : '—'}.</span>
+                ${name}
+              </div>
+            `)
+            .join('');
+        } else {
+          playerList.innerHTML = players
+            .map((p, i) => `
+              <div class="player-item">
+                <span class="player-num">${i + 1}.</span>
+                ${p}
+              </div>
+            `)
+            .join('');
+        }
+        
+        importBtn.style.display = 'block';
+      }
+      
+      preview.style.display = 'block';
+    }
+    
+    function importRoster() {
+      if (parsedPlayers.length === 0) {
+        alert('⚠️ No players to import!');
+        return;
+      }
+      
+      const btn = document.getElementById('importBtn');
+      btn.disabled = true;
+      btn.textContent = 'Importing...';
+      
+      google.script.run
+        .withSuccessHandler(result => {
+          alert(`✅ Successfully imported ${result.count} players!`);
+          google.script.host.close();
+        })
+        .withFailureHandler(err => {
+          alert(`❌ Import failed: ${err}`);
+          btn.disabled = false;
+          btn.textContent = '✅ Import to Active Sheet';
+        })
+        .importParsedRosterToActiveSheet(parsedPlayers);
+    }
+  </script>
+</body>
+</html>

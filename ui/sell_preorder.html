@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 0;
+      margin: 0;
+      font-size: 14px;
+      background: #f5f5f5;
+    }
+    .container {
+  width: 100%;        /* take full width of the Apps Script frame */
+  max-width: none;    /* remove any cap */
+  margin: 0;          /* no centering gap */
+  min-height: 100vh;  /* fill the vertical space of the frame */
+  box-sizing: border-box;
+  padding: 16px;      /* keep some breathing room */
+}
+
+    }
+    h2 {
+      color: #38761d;
+      margin: 0 0 4px 0;
+      font-size: 22px;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    /* SECTIONS */
+    .section {
+      background: #f8f9fa;
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      border: 1px solid #e0e0e0;
+    }
+    .section-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+    }
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 16px;
+      background: #38761d;
+      margin-right: 8px;
+      border-radius: 2px;
+    }
+
+    /* FORM ELEMENTS */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .form-group {
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #333;
+      font-size: 12px;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #38761d;
+      box-shadow: 0 0 0 2px rgba(56, 118, 29, 0.1);
+    }
+
+    /* CUSTOMER SEARCH - ENHANCED */
+    .customer-search-container {
+      position: relative;
+    }
+    .customer-suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #38761d;
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .customer-item {
+      padding: 10px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .customer-item:hover {
+      background: #f0f7ed;
+    }
+    .customer-item:last-child {
+      border-bottom: none;
+    }
+    .customer-name-primary {
+      font-weight: 600;
+      color: #333;
+    }
+    .customer-meta {
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+    }
+    .customer-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .badge-member {
+      background: #d4edda;
+      color: #155724;
+    }
+    .badge-preferred {
+      background: #cce5ff;
+      color: #004085;
+    }
+    .badge-preorder {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .badge-new {
+      background: #e2e3e5;
+      color: #383d41;
+    }
+    .customer-selected {
+      background: #f0f7ed;
+      border: 2px solid #38761d;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-top: 8px;
+      display: none;
+    }
+    .customer-selected-name {
+      font-weight: 700;
+      color: #38761d;
+      font-size: 15px;
+    }
+    .customer-selected-info {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .btn-clear-customer {
+      background: none;
+      border: none;
+      color: #dc3545;
+      cursor: pointer;
+      font-size: 12px;
+      float: right;
+    }
+
+    /* ACTIVE PREORDERS ALERT */
+    .active-preorders-alert {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-top: 10px;
+      display: none;
+    }
+    .active-preorders-title {
+      font-weight: 700;
+      color: #856404;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .active-preorder-item {
+      font-size: 12px;
+      color: #856404;
+      padding: 2px 0;
+    }
+
+    /* INVENTORY SNAPSHOT */
+    .inventory-snapshot {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .inventory-snapshot-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: #2e7d32;
+      margin-bottom: 8px;
+    }
+    .inventory-set {
+      margin-bottom: 8px;
+    }
+    .inventory-set-name {
+      font-weight: 600;
+      font-size: 12px;
+      color: #1b5e20;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .inventory-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .inventory-chip {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: white;
+      border: 1px solid #81c784;
+    }
+    .inventory-chip.low {
+      background: #fff3cd;
+      border-color: #ffc107;
+    }
+    .inventory-chip.out {
+      background: #f8d7da;
+      border-color: #dc3545;
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    /* ITEM SELECTION */
+    .add-item-row {
+      display: grid;
+      grid-template-columns: 1.5fr 2fr 0.8fr 0.6fr auto;
+      gap: 10px;
+      align-items: end;
+      padding: 12px;
+      background: #fff;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+    .availability-badge {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      margin-left: 6px;
+    }
+    .availability-badge.good {
+      background: #d4edda;
+      color: #155724;
+    }
+    .availability-badge.low {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .availability-badge.out {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    /* BASKET */
+    .basket-section {
+      background: #fff;
+      border: 2px solid #38761d;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .basket-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #38761d;
+    }
+    .basket-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #38761d;
+    }
+    .basket-total {
+      font-size: 18px;
+      font-weight: 700;
+      color: #38761d;
+    }
+    .basket-item {
+      background: #f8f9fa;
+      padding: 10px 12px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      border-left: 4px solid #38761d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .basket-item-info {
+      flex: 1;
+    }
+    .basket-item-name {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 2px;
+    }
+    .basket-item-details {
+      font-size: 11px;
+      color: #666;
+    }
+    .basket-item-price {
+      font-weight: 700;
+      color: #333;
+      margin-right: 12px;
+      font-size: 15px;
+    }
+    .btn-remove-item {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .btn-remove-item:hover {
+      background: #c82333;
+    }
+    .empty-basket {
+      text-align: center;
+      padding: 24px;
+      color: #999;
+      font-style: italic;
+    }
+
+    /* PAYMENT */
+    .payment-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .payment-option {
+      background: white;
+      padding: 14px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .payment-option:hover {
+      border-color: #38761d;
+    }
+    .payment-option.selected {
+      border-color: #38761d;
+      background: #f0f7ed;
+    }
+    .payment-option-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #333;
+      font-size: 13px;
+    }
+    .payment-option-desc {
+      font-size: 11px;
+      color: #666;
+    }
+    .payment-details {
+      margin-top: 12px;
+      padding: 14px;
+      background: #f0f7ed;
+      border-radius: 4px;
+      border: 1px solid #c6e5c3;
+    }
+
+    /* SUMMARY */
+    .summary-box {
+      background: #f0f7ed;
+      padding: 14px;
+      border-radius: 8px;
+      border: 2px solid #38761d;
+      margin-bottom: 16px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #c6e5c3;
+      font-size: 13px;
+    }
+    .summary-row:last-child {
+      border-bottom: none;
+      font-weight: 700;
+      font-size: 15px;
+      color: #38761d;
+      padding-top: 10px;
+    }
+    .summary-label {
+      color: #555;
+    }
+    .summary-value {
+      font-weight: 600;
+      color: #333;
+    }
+
+    /* BUTTONS */
+    .buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 2px solid #e0e0e0;
+    }
+    button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .btn-cancel {
+      background: #6c757d;
+      color: white;
+    }
+    .btn-cancel:hover {
+      background: #5a6268;
+    }
+    .btn-add-to-basket {
+      background: #38761d;
+      color: white;
+      padding: 8px 14px;
+      white-space: nowrap;
+    }
+    .btn-add-to-basket:hover {
+      background: #2d5f17;
+    }
+    .btn-add-to-basket:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .btn-confirm {
+      background: #38761d;
+      color: white;
+      font-size: 15px;
+      padding: 12px 28px;
+    }
+    .btn-confirm:hover {
+      background: #2d5f17;
+    }
+    .btn-confirm:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    /* STATUS */
+    #status {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      display: none;
+    }
+    #status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    #status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    #status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+    .loading {
+      text-align: center;
+      padding: 16px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Sell Preorder</h2>
+    <div class="subtitle">Record a customer preorder purchase</div>
+
+    <!-- CUSTOMER SECTION -->
+    <div class="section">
+      <div class="section-title">Customer</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="customerSearch">Search Customer *</label>
+          <div class="customer-search-container">
+            <input type="text" id="customerSearch" placeholder="Start typing name..." autocomplete="off" />
+            <div id="customerSuggestions" class="customer-suggestions hidden"></div>
+          </div>
+          <div id="customerSelected" class="customer-selected">
+            <button type="button" class="btn-clear-customer" onclick="clearCustomer()">✕ Clear</button>
+            <div class="customer-selected-name" id="selectedCustomerName"></div>
+            <div class="customer-selected-info" id="selectedCustomerInfo"></div>
+          </div>
+          <div id="activePreordersAlert" class="active-preorders-alert">
+            <div class="active-preorders-title">⚠ This customer has active preorders:</div>
+            <div id="activePreordersList"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="contactInfo">Contact Info (Phone/Email)</label>
+          <input type="text" id="contactInfo" placeholder="555-1234 or email@example.com" />
+        </div>
+      </div>
+    </div>
+
+    <!-- INVENTORY SNAPSHOT -->
+    <div class="section">
+      <div class="section-title">Available Inventory</div>
+      <div id="inventorySnapshot" class="inventory-snapshot">
+        <div class="loading">Loading inventory...</div>
+      </div>
+
+      <!-- ADD ITEM ROW -->
+      <div class="add-item-row">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="setSelect">Set</label>
+          <select id="setSelect">
+            <option value="">Select a set...</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="itemSelect">Item</label>
+          <select id="itemSelect" disabled>
+            <option value="">Select an item...</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="itemPrice">Price ($)</label>
+          <input type="number" id="itemPrice" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="itemQty">Qty</label>
+          <input type="number" id="itemQty" min="1" value="1" />
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label>&nbsp;</label>
+          <button class="btn-add-to-basket" id="btnAddToBasket" disabled>+ Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BASKET SECTION -->
+    <div class="basket-section">
+      <div class="basket-header">
+        <div class="basket-title">🛒 Preorder Basket</div>
+        <div class="basket-total" id="basketTotal">$0.00</div>
+      </div>
+      <div id="basketItems">
+        <div class="empty-basket">No items added yet</div>
+      </div>
+    </div>
+
+    <!-- PAYMENT SECTION -->
+    <div class="section">
+      <div class="section-title">Payment</div>
+      <div class="payment-options">
+        <div class="payment-option" id="paymentFullOption" onclick="selectPaymentOption('full')">
+          <div class="payment-option-title">💳 Paid in Full</div>
+          <div class="payment-option-desc">Customer paid the full amount today</div>
+        </div>
+        <div class="payment-option selected" id="paymentDepositOption" onclick="selectPaymentOption('deposit')">
+          <div class="payment-option-title">💰 Deposit / Partial</div>
+          <div class="payment-option-desc">Customer paid a deposit, balance due later</div>
+        </div>
+      </div>
+      <div id="depositDetails" class="payment-details">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="depositAmount">Deposit Amount ($) *</label>
+            <input type="number" id="depositAmount" step="0.01" value="0" min="0" oninput="updateSummary()" />
+          </div>
+          <div class="form-group">
+            <label for="payoffDate">Target Payoff Date</label>
+            <input type="date" id="payoffDate" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="section">
+      <div class="section-title">Notes (Optional)</div>
+      <textarea id="notes" rows="2" placeholder="Special instructions, notes..."></textarea>
+    </div>
+
+    <!-- SUMMARY -->
+    <div id="summarySection" class="summary-box hidden">
+      <div class="section-title" style="margin-bottom: 12px;">Order Summary</div>
+      <div class="summary-row">
+        <span class="summary-label">Customer:</span>
+        <span class="summary-value" id="summaryCustomer">-</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Items:</span>
+        <span class="summary-value" id="summaryItems">0</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Total Due:</span>
+        <span class="summary-value" id="summaryTotal">$0.00</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Amount Paid:</span>
+        <span class="summary-value" id="summaryPaid">$0.00</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">Balance Remaining:</span>
+        <span class="summary-value" id="summaryBalance">$0.00</span>
+      </div>
+    </div>
+
+    <div id="status"></div>
+
+    <div class="buttons">
+      <button class="btn-cancel" onclick="google.script.host.close()">Cancel</button>
+      <button class="btn-confirm" onclick="confirmPreorder()" id="btnConfirm" disabled>
+        ✓ Confirm Preorder
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ========== STATE ==========
+    let availableSets = [];
+    let availableItems = [];
+    let inventorySummary = {};
+    let basket = [];
+    let paymentMode = 'deposit';
+    let selectedCustomer = null;
+    let searchTimeout = null;
+
+    // ========== INIT ==========
+    window.onload = function() {
+      loadInventory();
+      setupEventListeners();
+    };
+
+    function setupEventListeners() {
+      // Customer search with debounce
+      document.getElementById('customerSearch').addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim();
+
+        if (query.length < 2) {
+          document.getElementById('customerSuggestions').classList.add('hidden');
+          return;
+        }
+
+        searchTimeout = setTimeout(() => {
+          google.script.run
+            .withSuccessHandler(showCustomerSuggestions)
+            .withFailureHandler(onError)
+            .searchCustomersWithPreferred(query);
+        }, 250);
+      });
+
+      // Set change
+      document.getElementById('setSelect').addEventListener('change', onSetChange);
+
+      // Item change
+      document.getElementById('itemSelect').addEventListener('change', onItemChange);
+
+      // Add to basket
+      document.getElementById('btnAddToBasket').addEventListener('click', addToBasket);
+
+      // Close suggestions on click outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.customer-search-container')) {
+          document.getElementById('customerSuggestions').classList.add('hidden');
+        }
+      });
+    }
+
+    // ========== INVENTORY ==========
+    function loadInventory() {
+      google.script.run
+        .withSuccessHandler(onInventoryLoaded)
+        .withFailureHandler(onError)
+        .getPreorderBucketsForUI();
+    }
+
+    function onInventoryLoaded(data) {
+      availableSets = data.sets || [];
+      availableItems = data.items || [];
+      inventorySummary = data.summary || {};
+
+      renderInventorySnapshot();
+      populateSetDropdown();
+    }
+
+    function renderInventorySnapshot() {
+      const container = document.getElementById('inventorySnapshot');
+
+      if (availableSets.length === 0) {
+        container.innerHTML = '<div class="loading">No preorder inventory available. Import allocations first.</div>';
+        return;
+      }
+
+      let html = '<div class="inventory-snapshot-title">📦 Current Stock</div>';
+
+      availableSets.forEach(setName => {
+        const setItems = availableItems.filter(i => i.Set_Name === setName);
+        const summary = inventorySummary[setName] || {};
+
+        html += `<div class="inventory-set">
+          <div class="inventory-set-name">
+            <span>${escapeHtml(setName)}</span>
+            <span>${summary.totalRemaining || 0} of ${summary.totalAllocated || 0} remaining</span>
+          </div>
+          <div class="inventory-items">`;
+
+        setItems.forEach(item => {
+          let chipClass = '';
+          if (item.Qty_Remaining <= 0) chipClass = 'out';
+          else if (item.Qty_Remaining <= 2) chipClass = 'low';
+
+          html += `<span class="inventory-chip ${chipClass}">${escapeHtml(item.Item_Name)}: ${item.Qty_Remaining}</span>`;
+        });
+
+        html += '</div></div>';
+      });
+
+      container.innerHTML = html;
+    }
+
+    function populateSetDropdown() {
+      const setSelect = document.getElementById('setSelect');
+      setSelect.innerHTML = '<option value="">Select a set...</option>';
+
+      availableSets.forEach(setName => {
+        const summary = inventorySummary[setName] || {};
+        const remaining = summary.totalRemaining || 0;
+
+        const option = document.createElement('option');
+        option.value = setName;
+        option.textContent = `${setName} (${remaining} available)`;
+        if (remaining <= 0) option.disabled = true;
+
+        setSelect.appendChild(option);
+      });
+    }
+
+    // ========== SET/ITEM SELECTION ==========
+    function onSetChange() {
+      const setName = document.getElementById('setSelect').value;
+      const itemSelect = document.getElementById('itemSelect');
+
+      if (!setName) {
+        itemSelect.disabled = true;
+        itemSelect.innerHTML = '<option value="">Select an item...</option>';
+        document.getElementById('btnAddToBasket').disabled = true;
+        document.getElementById('itemPrice').value = '';
+        return;
+      }
+
+      const setItems = availableItems.filter(i => i.Set_Name === setName && i.Qty_Remaining > 0);
+
+      itemSelect.innerHTML = '<option value="">Select an item...</option>';
+
+      setItems.forEach((item, idx) => {
+        const option = document.createElement('option');
+        option.value = JSON.stringify(item);
+
+        let label = item.Item_Name;
+        if (item.Item_Code) label += ` (${item.Item_Code})`;
+        label += ` - ${item.Qty_Remaining} left`;
+        if (item.Unit_Price) label += ` @ $${parseFloat(item.Unit_Price).toFixed(2)}`;
+
+        option.textContent = label;
+        itemSelect.appendChild(option);
+      });
+
+      itemSelect.disabled = setItems.length === 0;
+      if (setItems.length === 0) {
+        itemSelect.innerHTML = '<option value="">No items available</option>';
+      }
+    }
+
+    function onItemChange() {
+      const itemSelect = document.getElementById('itemSelect');
+      const selectedValue = itemSelect.value;
+
+      if (!selectedValue) {
+        document.getElementById('itemPrice').value = '';
+        document.getElementById('btnAddToBasket').disabled = true;
+        return;
+      }
+
+      const item = JSON.parse(selectedValue);
+      document.getElementById('itemPrice').value = item.Unit_Price || '';
+      document.getElementById('itemQty').value = 1;
+      document.getElementById('itemQty').max = item.Qty_Remaining;
+      document.getElementById('btnAddToBasket').disabled = false;
+    }
+
+    // ========== BASKET ==========
+    function addToBasket() {
+      const itemSelect = document.getElementById('itemSelect');
+      const selectedValue = itemSelect.value;
+
+      if (!selectedValue) return;
+
+      const item = JSON.parse(selectedValue);
+      const qty = parseInt(document.getElementById('itemQty').value, 10) || 1;
+      const price = parseFloat(document.getElementById('itemPrice').value) || item.Unit_Price || 0;
+
+      if (qty <= 0 || qty > item.Qty_Remaining) {
+        showStatus(`Invalid quantity. Max available: ${item.Qty_Remaining}`, 'error');
+        return;
+      }
+
+      // Check if already in basket
+      const existingIdx = basket.findIndex(b =>
+        b.setName === item.Set_Name &&
+        b.itemCode === (item.Item_Code || item.Item_Name)
+      );
+
+      if (existingIdx >= 0) {
+        const newQty = basket[existingIdx].qtyWanted + qty;
+        if (newQty > item.Qty_Remaining) {
+          showStatus(`Can't add more. Only ${item.Qty_Remaining} available total.`, 'error');
+          return;
+        }
+        basket[existingIdx].qtyWanted = newQty;
+      } else {
+        basket.push({
+          setName: item.Set_Name,
+          itemCode: item.Item_Code || '',
+          itemName: item.Item_Name,
+          unitPrice: price,
+          qtyWanted: qty,
+          maxAvailable: item.Qty_Remaining
+        });
+      }
+
+      updateBasketDisplay();
+      updateSummary();
+      updateConfirmButton();
+
+      // Reset selection
+      itemSelect.selectedIndex = 0;
+      document.getElementById('itemPrice').value = '';
+      document.getElementById('itemQty').value = 1;
+      document.getElementById('btnAddToBasket').disabled = true;
+      hideStatus();
+    }
+
+    function removeFromBasket(index) {
+      basket.splice(index, 1);
+      updateBasketDisplay();
+      updateSummary();
+      updateConfirmButton();
+    }
+
+    function updateBasketDisplay() {
+      const container = document.getElementById('basketItems');
+      const totalEl = document.getElementById('basketTotal');
+
+      if (basket.length === 0) {
+        container.innerHTML = '<div class="empty-basket">No items added yet</div>';
+        totalEl.textContent = '$0.00';
+        return;
+      }
+
+      let total = 0;
+      let html = '';
+
+      basket.forEach((item, idx) => {
+        const lineTotal = item.unitPrice * item.qtyWanted;
+        total += lineTotal;
+
+        html += `<div class="basket-item">
+          <div class="basket-item-info">
+            <div class="basket-item-name">${escapeHtml(item.itemName)}</div>
+            <div class="basket-item-details">
+              ${escapeHtml(item.setName)} - Qty: ${item.qtyWanted} x $${item.unitPrice.toFixed(2)}
+            </div>
+          </div>
+          <div class="basket-item-price">$${lineTotal.toFixed(2)}</div>
+          <button class="btn-remove-item" onclick="removeFromBasket(${idx})">Remove</button>
+        </div>`;
+      });
+
+      container.innerHTML = html;
+      totalEl.textContent = `$${total.toFixed(2)}`;
+    }
+
+    // ========== CUSTOMER SEARCH ==========
+    function showCustomerSuggestions(results) {
+      const container = document.getElementById('customerSuggestions');
+
+      if (!results || results.length === 0) {
+        // Show option to use as new customer
+        const query = document.getElementById('customerSearch').value.trim();
+        container.innerHTML = `<div class="customer-item" onclick="selectNewCustomer('${escapeHtml(query)}')">
+          <div>
+            <div class="customer-name-primary">"${escapeHtml(query)}"</div>
+            <div class="customer-meta">Use as new customer</div>
+          </div>
+          <span class="customer-badge badge-new">NEW</span>
+        </div>`;
+        container.classList.remove('hidden');
+        return;
+      }
+
+      let html = '';
+
+      results.forEach(cust => {
+        let badgeClass = 'badge-new';
+        let badgeText = 'NEW';
+
+        if (cust.source === 'PreferredNames') {
+          badgeClass = 'badge-preferred';
+          badgeText = 'PLAYER';
+        } else if (cust.source === 'Members') {
+          badgeClass = 'badge-member';
+          badgeText = 'MEMBER';
+        } else if (cust.source === 'Preorders') {
+          badgeClass = 'badge-preorder';
+          badgeText = 'PREORDER';
+        }
+
+        let meta = '';
+        if (cust.phone) meta += cust.phone;
+        if (cust.email) meta += (meta ? ' • ' : '') + cust.email;
+        if (cust.hasPreorders) meta += (meta ? ' • ' : '') + '📦 Has preorders';
+
+        html += `<div class="customer-item" onclick='selectCustomer(${JSON.stringify(cust)})'>
+          <div>
+            <div class="customer-name-primary">${escapeHtml(cust.name)}</div>
+            ${meta ? `<div class="customer-meta">${escapeHtml(meta)}</div>` : ''}
+          </div>
+          <span class="customer-badge ${badgeClass}">${badgeText}</span>
+        </div>`;
+      });
+
+      // Add "new customer" option at end
+      const query = document.getElementById('customerSearch').value.trim();
+      html += `<div class="customer-item" onclick="selectNewCustomer('${escapeHtml(query)}')">
+        <div>
+          <div class="customer-name-primary">"${escapeHtml(query)}"</div>
+          <div class="customer-meta">Use as new customer</div>
+        </div>
+        <span class="customer-badge badge-new">NEW</span>
+      </div>`;
+
+      container.innerHTML = html;
+      container.classList.remove('hidden');
+    }
+
+    function selectCustomer(cust) {
+      selectedCustomer = cust;
+
+      document.getElementById('customerSuggestions').classList.add('hidden');
+      document.getElementById('customerSearch').classList.add('hidden');
+
+      document.getElementById('selectedCustomerName').textContent = cust.name;
+
+      let info = cust.source;
+      if (cust.phone) info += ' • ' + cust.phone;
+      if (cust.email) info += ' • ' + cust.email;
+
+      document.getElementById('selectedCustomerInfo').textContent = info;
+      document.getElementById('customerSelected').style.display = 'block';
+
+      // Pre-fill contact if available
+      if (cust.phone || cust.email) {
+        document.getElementById('contactInfo').value = cust.phone || cust.email;
+      }
+
+      // Check for active preorders
+      if (cust.hasPreorders) {
+        google.script.run
+          .withSuccessHandler(showActivePreorders)
+          .getCustomerActivePreorders(cust.name);
+      } else {
+        document.getElementById('activePreordersAlert').style.display = 'none';
+      }
+
+      updateSummary();
+      updateConfirmButton();
+    }
+
+    function selectNewCustomer(name) {
+      selectedCustomer = {
+        name: name,
+        source: 'New',
+        hasPreorders: false
+      };
+
+      document.getElementById('customerSuggestions').classList.add('hidden');
+      document.getElementById('customerSearch').classList.add('hidden');
+
+      document.getElementById('selectedCustomerName').textContent = name;
+      document.getElementById('selectedCustomerInfo').textContent = 'New customer';
+      document.getElementById('customerSelected').style.display = 'block';
+      document.getElementById('activePreordersAlert').style.display = 'none';
+
+      updateSummary();
+      updateConfirmButton();
+    }
+
+    function clearCustomer() {
+      selectedCustomer = null;
+
+      document.getElementById('customerSearch').value = '';
+      document.getElementById('customerSearch').classList.remove('hidden');
+      document.getElementById('customerSelected').style.display = 'none';
+      document.getElementById('activePreordersAlert').style.display = 'none';
+      document.getElementById('contactInfo').value = '';
+
+      updateSummary();
+      updateConfirmButton();
+    }
+
+    function showActivePreorders(preorders) {
+      if (!preorders || preorders.length === 0) {
+        document.getElementById('activePreordersAlert').style.display = 'none';
+        return;
+      }
+
+      let html = '';
+      preorders.forEach(po => {
+        html += `<div class="active-preorder-item">• ${escapeHtml(po.setName)} - ${escapeHtml(po.itemName)} (x${po.qty}) - Balance: $${parseFloat(po.balanceDue || 0).toFixed(2)}</div>`;
+      });
+
+      document.getElementById('activePreordersList').innerHTML = html;
+      document.getElementById('activePreordersAlert').style.display = 'block';
+    }
+
+    // ========== PAYMENT ==========
+    function selectPaymentOption(mode) {
+      paymentMode = mode;
+
+      const fullOption = document.getElementById('paymentFullOption');
+      const depositOption = document.getElementById('paymentDepositOption');
+      const depositDetails = document.getElementById('depositDetails');
+
+      if (mode === 'full') {
+        fullOption.classList.add('selected');
+        depositOption.classList.remove('selected');
+        depositDetails.classList.add('hidden');
+      } else {
+        fullOption.classList.remove('selected');
+        depositOption.classList.add('selected');
+        depositDetails.classList.remove('hidden');
+      }
+
+      updateSummary();
+    }
+
+    // ========== SUMMARY ==========
+    function updateSummary() {
+      const customerName = selectedCustomer ? selectedCustomer.name : '';
+      const totalDue = basket.reduce((sum, item) => sum + (item.unitPrice * item.qtyWanted), 0);
+
+      let depositAmount = 0;
+      if (paymentMode === 'full') {
+        depositAmount = totalDue;
+      } else {
+        depositAmount = parseFloat(document.getElementById('depositAmount').value) || 0;
+      }
+
+      const balance = Math.max(0, totalDue - depositAmount);
+
+      document.getElementById('summaryCustomer').textContent = customerName || '-';
+      document.getElementById('summaryItems').textContent = basket.length;
+      document.getElementById('summaryTotal').textContent = `$${totalDue.toFixed(2)}`;
+      document.getElementById('summaryPaid').textContent = `$${depositAmount.toFixed(2)}`;
+      document.getElementById('summaryBalance').textContent = `$${balance.toFixed(2)}`;
+
+      if (basket.length > 0) {
+        document.getElementById('summarySection').classList.remove('hidden');
+      } else {
+        document.getElementById('summarySection').classList.add('hidden');
+      }
+    }
+
+    function updateConfirmButton() {
+      const canConfirm = selectedCustomer && basket.length > 0;
+      document.getElementById('btnConfirm').disabled = !canConfirm;
+    }
+
+    // ========== CONFIRM ==========
+    function confirmPreorder() {
+      if (!selectedCustomer) {
+        showStatus('Please select a customer', 'error');
+        return;
+      }
+
+      if (basket.length === 0) {
+        showStatus('Please add at least one item', 'error');
+        return;
+      }
+
+      const totalDue = basket.reduce((sum, item) => sum + (item.unitPrice * item.qtyWanted), 0);
+
+      let depositAmount = 0;
+      let targetPayoffDate = '';
+
+      if (paymentMode === 'full') {
+        depositAmount = totalDue;
+      } else {
+        depositAmount = parseFloat(document.getElementById('depositAmount').value) || 0;
+        targetPayoffDate = document.getElementById('payoffDate').value;
+
+        if (depositAmount < 0 || depositAmount > totalDue) {
+          showStatus('Deposit must be between $0 and total', 'error');
+          return;
+        }
+      }
+
+      showStatus('Processing preorder...', 'info');
+      document.getElementById('btnConfirm').disabled = true;
+
+      const payload = {
+        customerName: selectedCustomer.name,
+        contactInfo: document.getElementById('contactInfo').value.trim(),
+        basket: basket,
+        totalDue: totalDue,
+        depositAmount: depositAmount,
+        targetPayoffDate: targetPayoffDate,
+        notes: document.getElementById('notes').value.trim()
+      };
+
+      google.script.run
+        .withSuccessHandler(onPreorderSuccess)
+        .withFailureHandler(onPreorderError)
+        .sellPreorder(payload);
+    }
+
+    function onPreorderSuccess(result) {
+      showStatus(
+        `✓ Preorder ${result.preorderId} created for ${result.customerName}! ` +
+        `${result.itemCount} item(s), Total: $${result.totalDue.toFixed(2)}, Balance: $${result.balance.toFixed(2)}`,
+        'success'
+      );
+
+      setTimeout(() => {
+        google.script.host.close();
+      }, 2500);
+    }
+
+    function onPreorderError(error) {
+      showStatus(`Error: ${error.message}`, 'error');
+      document.getElementById('btnConfirm').disabled = false;
+    }
+
+    // ========== UTILITIES ==========
+    function showStatus(message, type) {
+      const el = document.getElementById('status');
+      el.textContent = message;
+      el.className = type;
+      el.style.display = 'block';
+    }
+
+    function hideStatus() {
+      document.getElementById('status').style.display = 'none';
+    }
+
+    function onError(error) {
+      console.error(error);
+      showStatus('Error: ' + (error.message || error), 'error');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; font-size: 14px; }
+    h2 { color: #1a73e8; margin-top: 0; }
+    .info-box { padding: 15px; background: #e8f4fd; border-radius: 4px; margin-bottom: 20px; }
+    .tab-preview { margin-top: 20px; max-height: 300px; overflow-y: auto; }
+    .tab-item { padding: 10px; margin-bottom: 8px; border-radius: 4px; border-left: 4px solid #ccc; display: flex; justify-content: space-between; align-items: center; }
+    .tab-item.event { background: #fff3cd; border-color: #ffc107; }
+    .tab-item.non-event { background: #e8f4fd; border-color: #1a73e8; }
+    .tab-item.straggler { background: #f8d7da; border-color: #dc3545; }
+    .tab-name { font-weight: 500; font-size: 14px; }
+    .tab-badge { padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; color: white; }
+    .tab-badge.event { background: #ffc107; color: #000; }
+    .tab-badge.non-event { background: #1a73e8; }
+    .tab-badge.straggler { background: #dc3545; }
+    .buttons { margin-top: 20px; text-align: right; }
+    button { padding: 10px 20px; margin-left: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px; }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-success:hover { background: #218838; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-secondary:hover { background: #5a6268; }
+    #status { margin-top: 15px; padding: 10px; border-radius: 4px; display: none; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .warning { background: #fff3cd; color: #856404; }
+    .stats { display: flex; gap: 20px; margin-bottom: 20px; }
+    .stat-box { flex: 1; padding: 15px; border-radius: 4px; text-align: center; }
+    .stat-box.event { background: #fff3cd; border: 2px solid #ffc107; }
+    .stat-box.non-event { background: #e8f4fd; border: 2px solid #1a73e8; }
+    .stat-box.straggler { background: #f8d7da; border: 2px solid #dc3545; }
+    .stat-number { font-size: 32px; font-weight: 700; }
+    .stat-label { font-size: 12px; color: #666; margin-top: 5px; }
+    .section-title { font-weight: 600; margin-top: 20px; margin-bottom: 10px; color: #333; }
+    .loading { text-align: center; padding: 40px; color: #666; }
+  </style>
+</head>
+<body>
+  <h2>Tab Organizer</h2>
+
+  <div class="info-box">
+    <strong>How it works:</strong>
+    <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+      <li>Non-event tabs will be sorted alphabetically on the left</li>
+      <li>Event tabs (MM-DD-YYYY format) will be sorted by date on the right</li>
+      <li>Current tab order will be reorganized automatically</li>
+    </ul>
+  </div>
+
+  <div class="stats" id="stats" style="display: none;">
+    <div class="stat-box non-event">
+      <div class="stat-number" id="nonEventCount">0</div>
+      <div class="stat-label">NON-EVENT TABS</div>
+    </div>
+    <div class="stat-box event">
+      <div class="stat-number" id="eventCount">0</div>
+      <div class="stat-label">EVENT TABS</div>
+    </div>
+    <div class="stat-box straggler" id="stragglerBox" style="display: none;">
+      <div class="stat-number" id="stragglerCount">0</div>
+      <div class="stat-label">STRAGGLERS</div>
+    </div>
+  </div>
+
+  <div id="loading" class="loading">Loading tab classification...</div>
+
+  <div id="tabPreview" class="tab-preview" style="display: none;"></div>
+
+  <div id="status"></div>
+
+  <div class="buttons">
+    <button class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+    <button class="btn-primary" onclick="showClassification()">Refresh</button>
+    <button class="btn-success" onclick="organizeTabs()">Organize Tabs</button>
+  </div>
+
+  <script>
+    // Run classification on load
+    showClassification();
+
+    function showClassification() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('tabPreview').style.display = 'none';
+      document.getElementById('stats').style.display = 'none';
+      hideStatus();
+
+      google.script.run
+        .withSuccessHandler(displayClassification)
+        .withFailureHandler(onFailure)
+        .getTabOrganizationStatus();
+    }
+
+    function displayClassification(status) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('stats').style.display = 'flex';
+      document.getElementById('tabPreview').style.display = 'block';
+
+      // Update stats
+      document.getElementById('nonEventCount').textContent = status.nonEventCount;
+      document.getElementById('eventCount').textContent = status.eventCount;
+
+      if (status.stragglerCount > 0) {
+        document.getElementById('stragglerBox').style.display = 'block';
+        document.getElementById('stragglerCount').textContent = status.stragglerCount;
+      } else {
+        document.getElementById('stragglerBox').style.display = 'none';
+      }
+
+      // Build preview
+      const preview = document.getElementById('tabPreview');
+      preview.innerHTML = '';
+
+      // Non-event tabs section
+      if (status.nonEventSheets.length > 0) {
+        const nonEventTitle = document.createElement('div');
+        nonEventTitle.className = 'section-title';
+        nonEventTitle.textContent = 'Non-Event Tabs (Alphabetical)';
+        preview.appendChild(nonEventTitle);
+
+        status.nonEventSheets.forEach((tab, idx) => {
+          const isStraggler = status.stragglers.includes(tab.name);
+          const tabDiv = document.createElement('div');
+          tabDiv.className = `tab-item ${isStraggler ? 'straggler' : 'non-event'}`;
+          tabDiv.innerHTML = `
+            <span class="tab-name">${idx + 1}. ${tab.name}</span>
+            <span class="tab-badge ${isStraggler ? 'straggler' : 'non-event'}">${isStraggler ? 'STRAGGLER' : 'NON-EVENT'}</span>
+          `;
+          preview.appendChild(tabDiv);
+        });
+      }
+
+      // Event tabs section
+      if (status.eventSheets.length > 0) {
+        const eventTitle = document.createElement('div');
+        eventTitle.className = 'section-title';
+        eventTitle.textContent = 'Event Tabs (Chronological)';
+        preview.appendChild(eventTitle);
+
+        status.eventSheets.forEach((tab, idx) => {
+          const tabDiv = document.createElement('div');
+          tabDiv.className = 'tab-item event';
+          tabDiv.innerHTML = `
+            <span class="tab-name">${status.nonEventSheets.length + idx + 1}. ${tab.name}</span>
+            <span class="tab-badge event">${tab.date}</span>
+          `;
+          preview.appendChild(tabDiv);
+        });
+      }
+
+      // Warning for stragglers
+      if (status.stragglerCount > 0) {
+        showStatus(
+          `⚠ Found ${status.stragglerCount} straggler tab(s) with date-like patterns that don't match the MM-DD-YYYY format. These will be treated as non-event tabs.`,
+          'warning'
+        );
+      }
+    }
+
+    function organizeTabs() {
+      const confirmed = confirm(
+        'This will reorganize all tabs in the spreadsheet.\n\n' +
+        'Non-event tabs will be alphabetically sorted on the left.\n' +
+        'Event tabs will be chronologically sorted on the right.\n\n' +
+        'Continue?'
+      );
+
+      if (!confirmed) return;
+
+      showStatus('Organizing tabs...', 'info');
+
+      google.script.run
+        .withSuccessHandler(onOrganizeSuccess)
+        .withFailureHandler(onFailure)
+        .organizeTabsLayout();
+    }
+
+    function onOrganizeSuccess(result) {
+      showStatus('✓ Tabs organized successfully!', 'success');
+
+      // Refresh the classification view
+      setTimeout(showClassification, 1000);
+
+      // Show result message
+      if (result.stragglerCount > 0) {
+        setTimeout(() => {
+          alert(result.message);
+        }, 1500);
+      }
+    }
+
+    function onFailure(error) {
+      showStatus('Error: ' + error.message, 'error');
+      console.error(error);
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+      status.style.display = 'block';
+    }
+
+    function hideStatus() {
+      document.getElementById('status').style.display = 'none';
+    }
+  </script>
+</body>
+</html>

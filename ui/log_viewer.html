@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 15px; font-size: 12px; }
+    h3 { color: #1a73e8; margin-top: 0; }
+    .filters { margin-bottom: 15px; }
+    select, input { padding: 6px; margin-right: 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; }
+    button { padding: 6px 12px; border: none; border-radius: 3px; background: #1a73e8; color: white; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th { background: #4285f4; color: white; padding: 6px; text-align: left; position: sticky; top: 0; }
+    td { padding: 4px; border-bottom: 1px solid #eee; }
+    .log-container { max-height: 400px; overflow-y: auto; }
+    .badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+    .badge.success { background: #d4edda; color: #155724; }
+    .badge.warning { background: #fff3cd; color: #856404; }
+    .badge.failure { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h3>Integrity Log</h3>
+  <div class="filters">
+    <select id="actionFilter"><option value="">All Actions</option></select>
+    <input type="text" id="searchText" placeholder="Search...">
+    <button onclick="loadLog()">Refresh</button>
+    <button onclick="exportCSV()">Export CSV</button>
+  </div>
+  <div class="log-container">
+    <table id="logTable">
+      <thead>
+        <tr><th>Time</th><th>Event</th><th>Action</th><th>Player</th><th>Status</th><th>Details</th></tr>
+      </thead>
+      <tbody id="logBody"></tbody>
+    </table>
+  </div>
+  <script>
+    loadLog();
+    function loadLog() {
+      google.script.run.withSuccessHandler(displayLog).getIntegrityLog();
+    }
+    function displayLog(logs) {
+      const tbody = document.getElementById('logBody');
+      tbody.innerHTML = '';
+      logs.slice(-100).reverse().forEach(log => {
+        const statusClass = log.Status === 'SUCCESS' ? 'success' : log.Status === 'FAILURE' ? 'failure' : 'warning';
+        tbody.innerHTML += `<tr>
+          <td>${log.Timestamp}</td>
+          <td>${log.Event_ID}</td>
+          <td>${log.Action}</td>
+          <td>${log.PreferredName}</td>
+          <td><span class="badge ${statusClass}">${log.Status}</span></td>
+          <td>${log.Details}</td>
+        </tr>`;
+      });
+    }
+
+    function exportCSV() {
+      google.script.run.onExportReports();
+      google.script.run.withSuccessHandler(downloadCSV).exportIntegrityLogCSV();
+    }
+
+    function downloadCSV(csvContent) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `Integrity_Log_${timestamp}.csv`;
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

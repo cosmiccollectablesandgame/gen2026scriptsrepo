@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>Create Tournament Event</title>
+  <style>
+    :root { 
+      --bg: #fff; 
+      --ink: #111827; 
+      --muted: #6b7280; 
+      --accent: #667eea; 
+      --accent-hover: #5568d3;
+      --border: #e5e7eb; 
+    }
+    body { 
+      margin: 0; 
+      padding: 20px; 
+      font: 16px/1.5 system-ui, -apple-system, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: var(--ink); 
+    }
+    .container {
+      background: rgba(255,255,255,0.95);
+      padding: 30px;
+      border-radius: 12px;
+      width: 100%;        /* fill all available width */
+      max-width: none;    /* remove 600px cap */
+      margin: 0;          /* no auto-centering gap */
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      box-sizing: border-box; /* make padding play nice with width:100% */
+}
+
+    h2 { 
+      margin: 0 0 10px 0; 
+      color: var(--accent); 
+      font-size: 24px;
+    }
+    .subtitle { 
+      color: var(--muted); 
+      margin-bottom: 25px; 
+      font-size: 14px;
+    }
+    .form-group { 
+      margin-bottom: 20px; 
+    }
+    label { 
+      display: block; 
+      margin-bottom: 8px; 
+      font-weight: 600; 
+      color: #374151;
+      font-size: 14px;
+    }
+    input[type="date"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+    input[type="date"]:focus {
+      border-color: var(--accent);
+      outline: none;
+    }
+    .suffix-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 5px;
+    }
+    .suffix-btn {
+      padding: 14px 10px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: #f9fafb;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .suffix-btn:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+    .suffix-btn.selected {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .suffix-code {
+      font-weight: 900;
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+    .suffix-label {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+    .suffix-btn.selected .suffix-label {
+      color: rgba(255,255,255,0.9);
+    }
+    .preview-box {
+      background: #f3f4f6;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .preview-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .preview-value {
+      font: 600 18px/1.2 'Courier New', monospace;
+      color: var(--accent);
+    }
+    .btn {
+      width: 100%;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+      margin-top: 10px;
+    }
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>📅 Create New Event</h2>
+    <div class="subtitle">Select a date and event type to generate a new tournament sheet</div>
+    
+    <div class="form-group">
+      <label for="eventDate">Event Date</label>
+      <input type="date" id="eventDate" required>
+    </div>
+    
+    <div class="form-group">
+      <label>Event Type</label>
+      <div class="suffix-grid" id="suffixGrid">
+        <!-- Populated by JavaScript -->
+      </div>
+    </div>
+    
+    <div class="preview-box">
+      <div class="preview-label">Sheet Name Preview</div>
+      <div class="preview-value" id="preview">—</div>
+    </div>
+    
+    <button class="btn btn-primary" id="createBtn">
+      ✨ Create Event Sheet
+    </button>
+    <button class="btn btn-secondary" id="cancelBtn">
+      Cancel
+    </button>
+  </div>
+  
+  <script>
+    let selectedSuffix = 'C';
+    const suffixes = [
+      {code:'A', label:'Academy / Learn to Play'},
+      {code:'B', label:'Casual Commander (Brackets 1–2)'},
+      {code:'C', label:'Transitional Commander (Brackets 3–4)'},
+      {code:'D', label:'Booster Draft'},
+      {code:'E', label:'External / Outreach'},
+      {code:'F', label:'Commander Free Play'},
+      {code:'G', label:'Gundam / Gunpla'},
+      {code:'H', label:'Historic / Legacy'},
+      {code:'I', label:'Yu-Gi-Oh TCG'},
+      {code:'J', label:'Junior / Youth'},
+      {code:'K', label:'Kill Team'},
+      {code:'L', label:'Commander League'},
+      {code:'M', label:'Modern'},
+      {code:'N', label:'Pokémon TCG'},
+      {code:'O', label:'One Piece TCG'},
+      {code:'P', label:'Proxy / Cube Draft'},
+      {code:'Q', label:'Precon Event'},
+      {code:'R', label:'Prerelease'},
+      {code:'S', label:'Sealed'},
+      {code:'T', label:'Two-Headed Giant'},
+      {code:'U', label:'cEDH / High-Power Commander (Bracket 5)'},
+      {code:'V', label:'Riftbound'},
+      {code:'W', label:'Workshop'},
+      {code:'X', label:'Multi-Event'},
+      {code:'Y', label:'Lorcana'},
+      {code:'Z', label:'Staff / Internal'},
+      {code:'', label:'Main Event'}
+    ];
+    
+    function init() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('eventDate').value = `${yyyy}-${mm}-${dd}`;
+      
+      // Set up event listeners
+      document.getElementById('eventDate').addEventListener('input', updatePreview);
+      document.getElementById('createBtn').addEventListener('click', createEvent);
+      document.getElementById('cancelBtn').addEventListener('click', function() {
+        google.script.host.close();
+      });
+      
+      // TEST CONNECTION FIRST
+      console.log('Testing connection to backend...');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('✅ Backend connected:', result);
+          renderSuffixes();
+          updatePreview();
+        })
+        .withFailureHandler(function(error) {
+          console.error('❌ Backend connection failed:', error);
+          alert('⚠️ Connection Error!\n\nCannot connect to backend functions.\n\nError: ' + error.message);
+        })
+        .testConnection();
+    }
+    
+    function renderSuffixes() {
+      const grid = document.getElementById('suffixGrid');
+      grid.innerHTML = suffixes.map(s => `
+        <div class="suffix-btn ${s.code === selectedSuffix ? 'selected' : ''}" 
+             data-code="${s.code}">
+          <div class="suffix-code">${s.code || 'MAIN'}</div>
+          <div class="suffix-label">${s.label}</div>
+        </div>
+      `).join('');
+      
+      // Add click listeners to all suffix buttons
+      grid.querySelectorAll('.suffix-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          selectSuffix(this.getAttribute('data-code'));
+        });
+      });
+    }
+    
+    function selectSuffix(code) {
+      selectedSuffix = code;
+      renderSuffixes();
+      updatePreview();
+    }
+    
+    function updatePreview() {
+      const dateInput = document.getElementById('eventDate').value;
+      if (!dateInput) {
+        document.getElementById('preview').textContent = '—';
+        return;
+      }
+      
+      const [year, month, day] = dateInput.split('-');
+      const suffix = selectedSuffix ? selectedSuffix.toLowerCase() : '';
+      const sheetName = `${month}-${day}${suffix}-${year}`;
+      
+      document.getElementById('preview').textContent = sheetName;
+    }
+    
+    function createEvent() {
+      console.log('CREATE EVENT BUTTON CLICKED'); // Debug log
+      
+      const btn = document.getElementById('createBtn');
+      const preview = document.getElementById('preview').textContent;
+      
+      console.log('Preview value:', preview);
+      
+      if (preview === '—' || !preview) {
+        alert('⚠️ Please select a date first!');
+        return;
+      }
+      
+      // SHOW ALERT TO CONFIRM BUTTON WORKS
+      if (!confirm(`Create event sheet: "${preview}"?\n\nClick OK to continue.`)) {
+        return;
+      }
+      
+      console.log('Creating event sheet with name:', preview);
+      
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+      
+      google.script.run
+        .withSuccessHandler((result) => {
+          console.log('Success:', result);
+          alert(`✅ Event sheet created successfully!\n\nSheet name: ${result || preview}`);
+          google.script.host.close();
+        })
+        .withFailureHandler((err) => {
+          console.error('Error creating event:', err);
+          const errorMsg = err.message || err.toString() || 'Unknown error';
+          alert(`❌ Failed to create event sheet:\n\n${errorMsg}\n\nPlease check:\n• Sheet name doesn't already exist\n• You have permission to create sheets`);
+          btn.disabled = false;
+          btn.textContent = '✨ Create Event Sheet';
+        })
+        .createEventSheet(preview);
+    }
+    
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      padding: 20px;
+      font-size: 14px;
+      margin: 0;
+    }
+    h2 {
+      color: #1a73e8;
+      margin-top: 0;
+      margin-bottom: 5px;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    label.required::after {
+      content: ' *';
+      color: #d32f2f;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+      margin-right: 8px;
+    }
+    .checkbox-group label {
+      margin-bottom: 0;
+      font-weight: normal;
+    }
+    .urgency-options {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .urgency-option {
+      padding: 8px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .urgency-option:hover {
+      border-color: #1a73e8;
+      background: #f8f9fa;
+    }
+    .urgency-option.selected {
+      border-color: #1a73e8;
+      background: #1a73e8;
+      color: white;
+    }
+    .urgency-option.low { border-color: #4caf50; }
+    .urgency-option.low.selected { background: #4caf50; border-color: #4caf50; }
+    .urgency-option.med { border-color: #ff9800; }
+    .urgency-option.med.selected { background: #ff9800; border-color: #ff9800; }
+    .urgency-option.high { border-color: #f44336; }
+    .urgency-option.high.selected { background: #f44336; border-color: #f44336; }
+    .urgency-option.critical { border-color: #9c27b0; }
+    .urgency-option.critical.selected { background: #9c27b0; border-color: #9c27b0; }
+    .buttons {
+      margin-top: 20px;
+      text-align: right;
+      padding-top: 15px;
+      border-top: 1px solid #e0e0e0;
+    }
+    button {
+      padding: 10px 24px;
+      margin-left: 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+    .btn-secondary {
+      background: #f1f3f4;
+      color: #333;
+    }
+    .btn-secondary:hover {
+      background: #e8eaed;
+    }
+    #status {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 4px;
+      display: none;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .field-error {
+      border-color: #d32f2f !important;
+    }
+    .error-message {
+      color: #d32f2f;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h2>This Needs…</h2>
+  <p class="subtitle">Quick intake for customer requests and staff assignments</p>
+
+  <div class="form-group">
+    <label for="taskSummary" class="required">Task Summary</label>
+    <input type="text" id="taskSummary" placeholder="e.g., Scan this binder, Pull list of cards">
+    <div id="taskSummaryError" class="error-message" style="display: none;"></div>
+  </div>
+
+  <div class="form-group">
+    <label for="customerName" class="required">Customer Name</label>
+    <input type="text" id="customerName" placeholder="Customer or player name">
+    <div id="customerNameError" class="error-message" style="display: none;"></div>
+  </div>
+
+  <div class="form-group">
+    <label for="dueDate" class="required">When do they need it back?</label>
+    <input type="datetime-local" id="dueDate">
+    <div id="dueDateError" class="error-message" style="display: none;"></div>
+  </div>
+
+  <div class="form-group">
+    <label for="assignedEmployee">Assigned To</label>
+    <input type="text" id="assignedEmployee" placeholder="Staff member name or leave blank for Unassigned">
+  </div>
+
+  <div class="form-group">
+    <label>Urgency</label>
+    <div class="urgency-options">
+      <div class="urgency-option low" data-urgency="LOW" onclick="selectUrgency('LOW')">LOW</div>
+      <div class="urgency-option med selected" data-urgency="MED" onclick="selectUrgency('MED')">MED</div>
+      <div class="urgency-option high" data-urgency="HIGH" onclick="selectUrgency('HIGH')">HIGH</div>
+      <div class="urgency-option critical" data-urgency="CRITICAL" onclick="selectUrgency('CRITICAL')">CRITICAL</div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="reachSource">How did they reach out?</label>
+    <select id="reachSource">
+      <option value="">Select...</option>
+      <option value="In person">In person</option>
+      <option value="Phone">Phone</option>
+      <option value="Online">Online</option>
+      <option value="Internal">Internal</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="contactInfo">Contact Information</label>
+    <input type="text" id="contactInfo" placeholder="Phone or email">
+  </div>
+
+  <div class="form-group">
+    <div class="checkbox-group">
+      <input type="checkbox" id="okToText">
+      <label for="okToText">OK to text?</label>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <div class="checkbox-group">
+      <input type="checkbox" id="expectingCallback">
+      <label for="expectingCallback">Expecting a callback?</label>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="pickupDate">Pickup Date (if known)</label>
+    <input type="date" id="pickupDate">
+  </div>
+
+  <div class="form-group">
+    <label for="details">Additional Details</label>
+    <textarea id="details" placeholder="Any additional notes or context..."></textarea>
+  </div>
+
+  <div id="status"></div>
+
+  <div class="buttons">
+    <button class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+    <button class="btn-primary" onclick="submitAssignment()">Submit</button>
+  </div>
+
+  <script>
+    let selectedUrgency = 'MED';
+
+    // Set default due date to today at 5pm
+    window.addEventListener('DOMContentLoaded', function() {
+      const now = new Date();
+      const defaultDue = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0);
+      document.getElementById('dueDate').value = formatDateTimeLocal(defaultDue);
+    });
+
+    function formatDateTimeLocal(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    function selectUrgency(urgency) {
+      selectedUrgency = urgency;
+      document.querySelectorAll('.urgency-option').forEach(el => {
+        el.classList.remove('selected');
+      });
+      document.querySelector(`.urgency-option[data-urgency="${urgency}"]`).classList.add('selected');
+    }
+
+    function validateForm() {
+      let isValid = true;
+
+      // Clear previous errors
+      document.querySelectorAll('.field-error').forEach(el => el.classList.remove('field-error'));
+      document.querySelectorAll('.error-message').forEach(el => {
+        el.style.display = 'none';
+        el.textContent = '';
+      });
+
+      // Validate task summary
+      const taskSummary = document.getElementById('taskSummary').value.trim();
+      if (!taskSummary) {
+        document.getElementById('taskSummary').classList.add('field-error');
+        document.getElementById('taskSummaryError').textContent = 'Task summary is required';
+        document.getElementById('taskSummaryError').style.display = 'block';
+        isValid = false;
+      }
+
+      // Validate customer name
+      const customerName = document.getElementById('customerName').value.trim();
+      if (!customerName) {
+        document.getElementById('customerName').classList.add('field-error');
+        document.getElementById('customerNameError').textContent = 'Customer name is required';
+        document.getElementById('customerNameError').style.display = 'block';
+        isValid = false;
+      }
+
+      // Validate due date
+      const dueDate = document.getElementById('dueDate').value;
+      if (!dueDate) {
+        document.getElementById('dueDate').classList.add('field-error');
+        document.getElementById('dueDateError').textContent = 'Due date is required';
+        document.getElementById('dueDateError').style.display = 'block';
+        isValid = false;
+      }
+
+      return isValid;
+    }
+
+    function submitAssignment() {
+      // Validate form
+      if (!validateForm()) {
+        showStatus('Please fill in all required fields', 'error');
+        return;
+      }
+
+      // Collect form data
+      const payload = {
+        taskSummary: document.getElementById('taskSummary').value.trim(),
+        customerName: document.getElementById('customerName').value.trim(),
+        dueDate: document.getElementById('dueDate').value,
+        assignedEmployee: document.getElementById('assignedEmployee').value.trim() || 'Unassigned',
+        urgency: selectedUrgency,
+        reachSource: document.getElementById('reachSource').value,
+        contactInfo: document.getElementById('contactInfo').value.trim(),
+        okToText: document.getElementById('okToText').checked,
+        expectingCallback: document.getElementById('expectingCallback').checked,
+        pickupDate: document.getElementById('pickupDate').value,
+        details: document.getElementById('details').value.trim()
+      };
+
+      // Show loading state
+      showStatus('Creating assignment...', 'info');
+      const submitBtn = document.querySelector('.btn-primary');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating...';
+
+      // Submit to server
+      google.script.run
+        .withSuccessHandler(onSuccess)
+        .withFailureHandler(onFailure)
+        .createThisNeedsAssignment(payload);
+    }
+
+    function onSuccess(result) {
+      showStatus(
+        `Got it! Task #${String(result.assignmentId).padStart(3, '0')} created for ${result.customerName}, due ${result.dueDate}.`,
+        'success'
+      );
+
+      // Re-enable button
+      const submitBtn = document.querySelector('.btn-primary');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit';
+
+      // Clear form after 2 seconds
+      setTimeout(() => {
+        google.script.host.close();
+      }, 2000);
+    }
+
+    function onFailure(error) {
+      showStatus(`Error: ${error.message}`, 'error');
+
+      // Re-enable button
+      const submitBtn = document.querySelector('.btn-primary');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit';
+    }
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = type;
+      status.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

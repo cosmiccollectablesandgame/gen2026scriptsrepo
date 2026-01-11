@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      padding: 12px 16px;
+      color: #202124;
+      margin: 0;
+      background: #fafafa;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin: 0 0 4px 0;
+      color: #1a73e8;
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: #5f6368;
+      margin-bottom: 12px;
+    }
+
+    .section {
+      margin-bottom: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #3c4043;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-title .num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #1a73e8;
+      color: #fff;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #5f6368;
+    }
+
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 12px;
+      margin-top: 4px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+
+    button {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: none;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #1557b0;
+    }
+
+    .btn-secondary {
+      background: #f1f3f4;
+      color: #3c4043;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #e8eaed;
+    }
+
+    .btn-success {
+      background: #34a853;
+      color: #fff;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background: #2d8a47;
+    }
+
+    .btn-small {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .badge-ok {
+      background: #e6f4ea;
+      color: #137333;
+    }
+
+    .badge-warn {
+      background: #fef7e0;
+      color: #b45309;
+    }
+
+    .badge-error {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    #globalMessage {
+      font-size: 11px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    #globalMessage.show {
+      display: block;
+    }
+
+    .msg-success {
+      background: #e6f4ea;
+      color: #137333;
+    }
+
+    .msg-error {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .msg-info {
+      background: #e8f0fe;
+      color: #1a73e8;
+    }
+
+    /* Event summary */
+    .event-summary {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .event-summary-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .event-summary-label {
+      color: #5f6368;
+      font-size: 10px;
+    }
+
+    .event-summary-value {
+      font-weight: 600;
+      color: #202124;
+    }
+
+    /* Round block */
+    .round-block {
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+    }
+
+    .round-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .round-title {
+      font-weight: 600;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .round-seats {
+      font-size: 10px;
+      color: #5f6368;
+      font-weight: normal;
+    }
+
+    .round-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* Preview tables */
+    .table-container {
+      max-height: 120px;
+      overflow: auto;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    th, td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #f1f3f4;
+      text-align: left;
+    }
+
+    th {
+      background: #f1f3f4;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .empty-preview {
+      padding: 12px;
+      text-align: center;
+      color: #5f6368;
+      font-style: italic;
+    }
+
+    /* Budget meter */
+    .budget-meter {
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+    }
+
+    .budget-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+
+    .budget-bar {
+      height: 8px;
+      background: #e8eaed;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+
+    .budget-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .budget-fill.green {
+      background: linear-gradient(90deg, #34a853, #5cb85c);
+    }
+
+    .budget-fill.amber {
+      background: linear-gradient(90deg, #f9ab00, #ffc107);
+    }
+
+    .budget-fill.red {
+      background: linear-gradient(90deg, #ea4335, #dc3545);
+    }
+
+    .budget-percent {
+      text-align: center;
+      font-size: 10px;
+      color: #5f6368;
+    }
+
+    /* End section */
+    .end-block {
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+    }
+
+    .end-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .end-title {
+      font-weight: 600;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .end-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e8eaed;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="section">
+    <h2>Commander Event Wizard</h2>
+    <div class="subtitle">Run all Commander round prizes and end-of-event prizes from one screen.</div>
+    <div id="globalMessage"></div>
+  </div>
+
+  <!-- 1. Choose Event -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">1</span>
+      Choose Commander Event
+    </div>
+    <label>
+      Event
+      <select id="eventSelect" onchange="onEventChange()">
+        <option value="">-- Select a Commander event --</option>
+      </select>
+    </label>
+    <div id="eventSummary"></div>
+  </div>
+
+  <!-- 2. Round Prizes -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">2</span>
+      Round Prizes
+    </div>
+    <div id="roundsPanel">
+      <div class="empty-preview">Select an event to manage round prizes.</div>
+    </div>
+  </div>
+
+  <!-- 3. End-of-Event Prizes -->
+  <div class="section">
+    <div class="section-title">
+      <span class="num">3</span>
+      End-of-Event Prizes
+    </div>
+    <div id="endPanel">
+      <div class="empty-preview">Select an event to manage end-of-event prizes.</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <button class="btn-secondary" onclick="google.script.host.close()">Close</button>
+  </div>
+
+  <script>
+    // State
+    let currentEventId = null;
+    let currentState = null;
+
+    // ========================================
+    // Initialization
+    // ========================================
+
+    function init() {
+      setGlobalMessage('info', 'Loading Commander events…');
+      google.script.run
+        .withSuccessHandler(populateEvents)
+        .withFailureHandler(showError)
+        .getCommanderEvents();
+    }
+
+    function populateEvents(events) {
+      const select = document.getElementById('eventSelect');
+      select.innerHTML = '<option value="">-- Select a Commander event --</option>';
+
+      if (!events || events.length === 0) {
+        setGlobalMessage('info', 'No Commander events found. Create an event with Commander format first.');
+        return;
+      }
+
+      events.forEach(ev => {
+        const opt = document.createElement('option');
+        opt.value = ev.sheetName;
+        opt.textContent = ev.displayName + ' (' + ev.playerCount + ' players)';
+        select.appendChild(opt);
+      });
+
+      setGlobalMessage('', '');
+    }
+
+    // ========================================
+    // Event Selection
+    // ========================================
+
+    function onEventChange() {
+      const eventId = document.getElementById('eventSelect').value;
+      currentEventId = eventId;
+
+      if (!eventId) {
+        document.getElementById('eventSummary').innerHTML = '';
+        document.getElementById('roundsPanel').innerHTML = '<div class="empty-preview">Select an event to manage round prizes.</div>';
+        document.getElementById('endPanel').innerHTML = '<div class="empty-preview">Select an event to manage end-of-event prizes.</div>';
+        return;
+      }
+
+      setGlobalMessage('info', 'Loading event state…');
+
+      google.script.run
+        .withSuccessHandler(renderEventState)
+        .withFailureHandler(showError)
+        .getCommanderEventState(eventId);
+    }
+
+    function renderEventState(state) {
+      if (!state) {
+        showError({ message: 'No state returned for this event.' });
+        return;
+      }
+
+      currentState = state;
+
+      // Render summary
+      const summaryEl = document.getElementById('eventSummary');
+      summaryEl.innerHTML = `
+        <div class="event-summary">
+          <div class="event-summary-item">
+            <span class="event-summary-label">Date</span>
+            <span class="event-summary-value">${state.date || '—'}</span>
+          </div>
+          <div class="event-summary-item">
+            <span class="event-summary-label">Players</span>
+            <span class="event-summary-value">${state.playerCount != null ? state.playerCount : '—'}</span>
+          </div>
+          <div class="event-summary-item">
+            <span class="event-summary-label">Format</span>
+            <span class="event-summary-value">${state.format || 'Commander'}</span>
+          </div>
+        </div>
+      `;
+
+      renderRoundsPanel(state);
+      renderEndPanel(state);
+      setGlobalMessage('', '');
+    }
+
+    // ========================================
+    // Rounds Panel
+    // ========================================
+
+    function renderRoundsPanel(state) {
+      const r = state.rounds || {};
+      const panel = document.getElementById('roundsPanel');
+
+      panel.innerHTML = `
+        ${renderRoundBlock(1, r.r1Awarded, '1st place')}
+        ${renderRoundBlock(2, r.r2Awarded, '1st & 4th place')}
+        ${renderRoundBlock(3, r.r3Awarded, '1st place')}
+      `;
+    }
+
+    function renderRoundBlock(roundNumber, awarded, seats) {
+      const statusClass = awarded ? 'badge-ok' : 'badge-warn';
+      const statusLabel = awarded ? 'Awarded' : 'Not Awarded';
+
+      return `
+        <div class="round-block" id="round${roundNumber}Block">
+          <div class="round-header">
+            <div class="round-title">
+              Round ${roundNumber}
+              <span class="badge ${statusClass}">${statusLabel}</span>
+              <span class="round-seats">(${seats})</span>
+            </div>
+            <div class="round-actions">
+              <button class="btn-small btn-secondary" onclick="previewRound(${roundNumber})">Preview</button>
+              <button class="btn-small btn-primary" onclick="commitRound(${roundNumber})" ${awarded ? 'disabled' : ''}>
+                Commit
+              </button>
+            </div>
+          </div>
+          <div class="table-container" id="roundPreview${roundNumber}">
+            <table>
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Prize</th>
+                  <th>Rarity</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="3" class="empty-preview">Click Preview to see prizes.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function previewRound(roundNumber) {
+      if (!currentEventId) {
+        setGlobalMessage('error', 'Please select an event first.');
+        return;
+      }
+
+      setGlobalMessage('info', 'Generating Round ' + roundNumber + ' preview…');
+
+      google.script.run
+        .withSuccessHandler(function(preview) {
+          renderPreviewTable('roundPreview' + roundNumber, preview);
+          setGlobalMessage('success', 'Round ' + roundNumber + ' preview ready.');
+        })
+        .withFailureHandler(showError)
+        .previewCommanderRoundPrizes(currentEventId, roundNumber);
+    }
+
+    function commitRound(roundNumber) {
+      if (!currentEventId) {
+        setGlobalMessage('error', 'Please select an event first.');
+        return;
+      }
+
+      if (!confirm('Commit Round ' + roundNumber + ' prizes for ' + currentEventId + '?\n\nThis action cannot be undone.')) {
+        return;
+      }
+
+      setGlobalMessage('info', 'Committing Round ' + roundNumber + ' prizes…');
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (!result || !result.success) {
+            setGlobalMessage('error', (result && result.message) || 'Failed to commit Round ' + roundNumber + '.');
+            return;
+          }
+          if (result.preview) {
+            renderPreviewTable('roundPreview' + roundNumber, result.preview);
+          }
+          setGlobalMessage('success', result.message);
+          // Refresh state
+          onEventChange();
+        })
+        .withFailureHandler(showError)
+        .commitCommanderRoundPrizes(currentEventId, roundNumber);
+    }
+
+    // ========================================
+    // End Panel
+    // ========================================
+
+    function renderEndPanel(state) {
+      const e = state.end || {};
+      const statusClass = e.endAwarded ? 'badge-ok' : 'badge-warn';
+      const statusLabel = e.endAwarded ? 'Awarded' : 'Not Awarded';
+      const disabledAttr = e.endAwarded ? 'disabled' : '';
+
+      document.getElementById('endPanel').innerHTML = `
+        <div class="end-block">
+          <div class="end-header">
+            <div class="end-title">
+              End-of-Event Prizes
+              <span class="badge ${statusClass}">${statusLabel}</span>
+            </div>
+            <div class="end-actions">
+              <button class="btn-small btn-secondary" onclick="previewEnd()">Preview</button>
+              <button class="btn-small btn-success" onclick="commitEnd()" ${disabledAttr}>
+                Commit
+              </button>
+            </div>
+          </div>
+          <div id="endBudgetMeter" style="display:none;"></div>
+          <div class="table-container" id="endPreview">
+            <table>
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Prize</th>
+                  <th>Rarity</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="3" class="empty-preview">Click Preview to see prizes.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function previewEnd() {
+      if (!currentEventId) {
+        setGlobalMessage('error', 'Please select an event first.');
+        return;
+      }
+
+      setGlobalMessage('info', 'Generating end-of-event preview…');
+
+      google.script.run
+        .withSuccessHandler(function(preview) {
+          renderEndPreviewWithBudget(preview);
+          setGlobalMessage('success', 'End-of-event preview ready.');
+        })
+        .withFailureHandler(showError)
+        .previewCommanderEndPrizes(currentEventId);
+    }
+
+    function renderEndPreviewWithBudget(preview) {
+      // Render budget meter if available
+      if (preview.budget != null && preview.estimatedCost != null) {
+        const budget = preview.budget;
+        const spent = preview.estimatedCost;
+        const remaining = budget - spent;
+        const percent = budget > 0 ? (spent / budget) * 100 : 0;
+        const band = preview.rlBand || 'GREEN';
+
+        const meterEl = document.getElementById('endBudgetMeter');
+        meterEl.style.display = 'block';
+        meterEl.innerHTML = `
+          <div class="budget-meter">
+            <div class="budget-row">
+              <span>Budget: <strong>$${budget.toFixed(2)}</strong></span>
+              <span>Allocated: <strong>$${spent.toFixed(2)}</strong></span>
+              <span>Remaining: <strong>$${remaining.toFixed(2)}</strong></span>
+            </div>
+            <div class="budget-bar">
+              <div class="budget-fill ${band.toLowerCase()}" style="width: ${Math.min(percent, 100)}%;"></div>
+            </div>
+            <div class="budget-percent">
+              ${percent.toFixed(1)}% used
+              <span class="badge ${band === 'GREEN' ? 'badge-ok' : (band === 'AMBER' ? 'badge-warn' : 'badge-error')}">${band}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // Render preview table
+      renderPreviewTable('endPreview', preview);
+    }
+
+    function commitEnd() {
+      if (!currentEventId) {
+        setGlobalMessage('error', 'Please select an event first.');
+        return;
+      }
+
+      if (!confirm('Commit end-of-event prizes for ' + currentEventId + '?\n\nThis will lock the event and cannot be undone.')) {
+        return;
+      }
+
+      setGlobalMessage('info', 'Committing end-of-event prizes…');
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (!result || !result.success) {
+            setGlobalMessage('error', (result && result.message) || 'Failed to commit end-of-event prizes.');
+            return;
+          }
+          if (result.preview) {
+            renderEndPreviewWithBudget(result.preview);
+          }
+          setGlobalMessage('success', result.message);
+          // Refresh state
+          onEventChange();
+        })
+        .withFailureHandler(showError)
+        .commitCommanderEndPrizes(currentEventId);
+    }
+
+    // ========================================
+    // Shared Helpers
+    // ========================================
+
+    function renderPreviewTable(containerId, preview) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const items = (preview && preview.items) ? preview.items : [];
+
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Prize</th>
+              <th>Rarity</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      if (!items.length) {
+        html += '<tr><td colspan="3" class="empty-preview">No prizes generated.</td></tr>';
+      } else {
+        items.forEach(item => {
+          html += `
+            <tr>
+              <td>${escapeHtml(item.player)}</td>
+              <td>${escapeHtml(item.prizeName || item.prizeCode)}</td>
+              <td>${escapeHtml(item.rarity)}</td>
+            </tr>
+          `;
+        });
+      }
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    function setGlobalMessage(type, text) {
+      const el = document.getElementById('globalMessage');
+      if (!el) return;
+
+      el.className = '';
+
+      if (!text) {
+        el.style.display = 'none';
+        el.textContent = '';
+        return;
+      }
+
+      if (type === 'success') el.className = 'msg-success show';
+      else if (type === 'error') el.className = 'msg-error show';
+      else if (type === 'info') el.className = 'msg-info show';
+      else el.className = 'show';
+
+      el.textContent = text;
+    }
+
+    function showError(err) {
+      const msg = (err && err.message) ? err.message : String(err);
+      console.error(err);
+      setGlobalMessage('error', msg);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Init on load
+    window.onload = init;
+  </script>
+</body>
+</html>
