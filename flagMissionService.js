@@ -368,6 +368,11 @@ function awardFlagMission(preferredName, missionName) {
         status: 'SUCCESS'
       });
 
+      // Sync BP_Total after flag mission award
+      if (typeof updateBPTotalFromSources === 'function') {
+        updateBPTotalFromSources();
+      }
+
       return { success: true, message: `Awarded ${points} points for ${missionName}` };
     }
   }

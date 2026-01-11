@@ -62,7 +62,12 @@ function awardDicePoints(playerName, amount, source, metadata) {
       resultPrestige: governorResult.prestige,
       overflow: governorResult.overflow
     });
-    
+
+    // Step 5: Sync BP_Total from all sources (ensures full consistency)
+    if (typeof updateBPTotalFromSources === 'function') {
+      updateBPTotalFromSources();
+    }
+
     return {
       success: true,
       awarded: amount,
