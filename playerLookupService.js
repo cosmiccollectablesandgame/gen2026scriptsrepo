@@ -535,7 +535,7 @@ function getIdentityInfo_(name, errors) {
 }
 
 /**
- * Gets bonus points info
+ * Gets bonus points info with full breakdown
  * @param {string} name - Player name
  * @param {string[]} errors - Error array
  * @return {BonusPointsInfo}
@@ -548,31 +548,55 @@ function getBonusPointsInfo_(name, errors) {
     lifetimeSpent: 0,
     pending: 0,
     lastEarnedFrom: 'Unknown',
-    lastUpdated: ''
+    lastUpdated: '',
+    // Breakdown components
+    breakdown: {
+      historical: 0,    // Total ever earned
+      redeemed: 0,      // Total spent/redeemed
+      current: 0,       // Available balance
+      attendancePoints: 0,
+      flagPoints: 0,
+      dicePoints: 0
+    }
   };
 
-  try {
-    // Use existing getPlayerBP function
-    result.current = getPlayerBP(name);
+  const nameLower = String(name).toLowerCase();
 
-    // Try to get additional BP info from BP_Total
+  try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Query BP_Total for main BP values
+    // ─────────────────────────────────────────────────────────────────────
     const bpSheet = ss.getSheetByName('BP_Total');
     if (bpSheet && bpSheet.getLastRow() > 1) {
       const data = bpSheet.getDataRange().getValues();
       const headers = data[0];
-      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
-      const histCol = findColumnIndex_(headers, ['Historical_BP', 'Lifetime_Earned', 'Total_Earned']);
+      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name', 'preferred_name_id']);
+      const currentCol = findColumnIndex_(headers, ['BP_Current', 'BP', 'Bonus_Points', 'Capped_BP']);
+      const histCol = findColumnIndex_(headers, ['Historical_BP', 'Lifetime_Earned', 'Total_Earned', 'BP_Historical']);
+      const redeemedCol = findColumnIndex_(headers, ['Redeemed_BP', 'BP_Redeemed', 'Spent', 'Total_Spent']);
       const updatedCol = findColumnIndex_(headers, ['LastUpdated', 'Last_Updated']);
 
       if (nameCol !== -1) {
         for (let i = 1; i < data.length; i++) {
-          if (String(data[i][nameCol]).toLowerCase() === name.toLowerCase()) {
+          if (String(data[i][nameCol]).toLowerCase() === nameLower) {
+            result.current = currentCol !== -1 ? coerceNumber(data[i][currentCol], 0) : 0;
+            result.breakdown.current = result.current;
+
             if (histCol !== -1) {
               result.lifetimeEarned = coerceNumber(data[i][histCol], result.current);
+              result.breakdown.historical = result.lifetimeEarned;
             } else {
               result.lifetimeEarned = result.current;
+              result.breakdown.historical = result.current;
             }
+
+            if (redeemedCol !== -1) {
+              result.lifetimeSpent = coerceNumber(data[i][redeemedCol], 0);
+              result.breakdown.redeemed = result.lifetimeSpent;
+            }
+
             if (updatedCol !== -1 && data[i][updatedCol]) {
               result.lastUpdated = formatDateSafe_(data[i][updatedCol]);
             }
@@ -581,6 +605,73 @@ function getBonusPointsInfo_(name, errors) {
         }
       }
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Query Attendance_Missions for attendance points
+    // ─────────────────────────────────────────────────────────────────────
+    const attendSheet = ss.getSheetByName('Attendance_Missions');
+    if (attendSheet && attendSheet.getLastRow() > 1) {
+      const data = attendSheet.getDataRange().getValues();
+      const headers = data[0];
+      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
+      const pointsCol = findColumnIndex_(headers, ['Attendance_Points', 'AttendancePoints', 'Points', 'BP_Earned']);
+
+      if (nameCol !== -1) {
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][nameCol]).toLowerCase() === nameLower) {
+            if (pointsCol !== -1) {
+              result.breakdown.attendancePoints = coerceNumber(data[i][pointsCol], 0);
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Query Flag_Missions for flag mission points
+    // ─────────────────────────────────────────────────────────────────────
+    const flagSheet = ss.getSheetByName('Flag_Missions');
+    if (flagSheet && flagSheet.getLastRow() > 1) {
+      const data = flagSheet.getDataRange().getValues();
+      const headers = data[0];
+      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
+      const pointsCol = findColumnIndex_(headers, ['Flag Mission Points', 'Flag Points', 'FlagPoints', 'Flag_Points']);
+
+      if (nameCol !== -1) {
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][nameCol]).toLowerCase() === nameLower) {
+            if (pointsCol !== -1) {
+              result.breakdown.flagPoints = coerceNumber(data[i][pointsCol], 0);
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Query Dice_Points for dice roll points
+    // ─────────────────────────────────────────────────────────────────────
+    const diceSheet = ss.getSheetByName('Dice_Points') || ss.getSheetByName('Dice Roll Points');
+    if (diceSheet && diceSheet.getLastRow() > 1) {
+      const data = diceSheet.getDataRange().getValues();
+      const headers = data[0];
+      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
+      const pointsCol = findColumnIndex_(headers, ['Points', 'Dice_Points', 'DicePoints', 'Total']);
+
+      if (nameCol !== -1) {
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][nameCol]).toLowerCase() === nameLower) {
+            if (pointsCol !== -1) {
+              result.breakdown.dicePoints = coerceNumber(data[i][pointsCol], 0);
+            }
+            break;
+          }
+        }
+      }
+    }
+
   } catch (e) {
     errors.push('BP lookup error: ' + e.message);
     Logger.log('BP lookup error: ' + e.message);
@@ -849,24 +940,53 @@ function getAttendanceInfo_(name, errors) {
 }
 
 /**
- * Gets missions info
+ * Gets missions info with individual flag mission status
  * @param {string} name - Player name
  * @param {string[]} errors - Error array
  * @return {MissionsInfo}
  * @private
  */
 function getMissionsInfo_(name, errors) {
+  // Flag mission definitions with point values
+  const FLAG_MISSIONS = {
+    'Cosmic_Selfie': 1,
+    'Review_Writer': 2,
+    'Social_Media_Star': 2,
+    'App_Explorer': 1,
+    'Cosmic_Merchant': 3,
+    'Precon_Pioneer': 2,
+    'Gravitational_Pull': 5,
+    'Rogue_Planet': 3,
+    'Quantum_Collector': 5
+  };
+
   const result = {
     completed: 0,
     inProgress: 0,
     badges: [],
-    recentAwards: []
+    recentAwards: [],
+    // Individual flag mission status
+    flagMissions: {},
+    flagMissionsCompleted: 0,
+    flagMissionsTotal: Object.keys(FLAG_MISSIONS).length
   };
+
+  // Initialize all flag missions as not completed
+  for (const mission in FLAG_MISSIONS) {
+    result.flagMissions[mission] = {
+      completed: false,
+      points: FLAG_MISSIONS[mission]
+    };
+  }
+
+  const nameLower = String(name).toLowerCase();
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // Try Attendance_Missions for badges
+    // ─────────────────────────────────────────────────────────────────────
+    // Query Attendance_Missions for attendance badges
+    // ─────────────────────────────────────────────────────────────────────
     const attendSheet = ss.getSheetByName('Attendance_Missions');
     if (attendSheet && attendSheet.getLastRow() > 1) {
       const data = attendSheet.getDataRange().getValues();
@@ -876,7 +996,7 @@ function getMissionsInfo_(name, errors) {
 
       if (nameCol !== -1) {
         for (let i = 1; i < data.length; i++) {
-          if (String(data[i][nameCol]).toLowerCase() === name.toLowerCase()) {
+          if (String(data[i][nameCol]).toLowerCase() === nameLower) {
             if (badgesCol !== -1 && data[i][badgesCol]) {
               result.badges = String(data[i][badgesCol]).split(',').map(b => b.trim()).filter(b => b);
               result.completed = result.badges.length;
@@ -886,6 +1006,41 @@ function getMissionsInfo_(name, errors) {
         }
       }
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Query Flag_Missions for individual flag mission completion
+    // ─────────────────────────────────────────────────────────────────────
+    const flagSheet = ss.getSheetByName('Flag_Missions');
+    if (flagSheet && flagSheet.getLastRow() > 1) {
+      const data = flagSheet.getDataRange().getValues();
+      const headers = data[0];
+      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
+
+      if (nameCol !== -1) {
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][nameCol]).toLowerCase() === nameLower) {
+            // Check each flag mission column
+            for (const mission in FLAG_MISSIONS) {
+              const missionCol = headers.indexOf(mission);
+              if (missionCol !== -1) {
+                const value = data[i][missionCol];
+                // Mission is completed if checkbox is TRUE or numeric value > 0
+                const isCompleted = value === true || (typeof value === 'number' && value > 0);
+                result.flagMissions[mission].completed = isCompleted;
+                if (isCompleted) {
+                  result.flagMissionsCompleted++;
+                }
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    // Add total completed missions count
+    result.completed += result.flagMissionsCompleted;
+
   } catch (e) {
     errors.push('Missions lookup error: ' + e.message);
     Logger.log('Missions lookup error: ' + e.message);
@@ -1019,5 +1174,58 @@ function formatDateSafe_(value) {
     return String(value);
   } catch (e) {
     return String(value || '');
+  }
+}
+
+// ============================================================================
+// MISSING WRAPPER FUNCTIONS FOR UI COMPATIBILITY
+// ============================================================================
+
+/**
+ * Wrapper for UI compatibility - UI calls getPlayerProfile()
+ * @param {string} name - Player name to look up
+ * @return {PlayerLookupProfile} Full player profile
+ */
+function getPlayerProfile(name) {
+  return getPlayerLookupProfile(name);
+}
+
+/**
+ * Gets all player names for UI dropdown
+ * @return {Array<string>} Array of player names
+ */
+function getPlayerNames() {
+  // Delegate to PlayerProvisioning.js canonical function
+  return getAllPreferredNames();
+}
+
+/**
+ * Gets player BP balance
+ * @param {string} name - Player name
+ * @return {number} Current BP balance
+ */
+function getPlayerBP(name) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const bpSheet = ss.getSheetByName('BP_Total');
+    if (!bpSheet || bpSheet.getLastRow() <= 1) return 0;
+
+    const data = bpSheet.getDataRange().getValues();
+    const headers = data[0];
+    const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name', 'preferred_name_id']);
+    const bpCol = findColumnIndex_(headers, ['BP_Current', 'BP', 'Bonus_Points', 'Capped_BP']);
+
+    if (nameCol === -1) return 0;
+
+    const nameLower = String(name).toLowerCase();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][nameCol]).toLowerCase() === nameLower) {
+        return bpCol !== -1 ? coerceNumber(data[i][bpCol], 0) : 0;
+      }
+    }
+    return 0;
+  } catch (e) {
+    Logger.log('getPlayerBP error: ' + e.message);
+    return 0;
   }
 }
