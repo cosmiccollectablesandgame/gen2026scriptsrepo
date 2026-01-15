@@ -67,6 +67,24 @@ function runOmegaAttendanceScan() {
       return;
     }
 
+    // Step 3.5: Auto-provision any new players found in event tabs
+    // Uses addNewPlayer() from PlayerProvisioning.js - idempotent operation
+    var provisionedCount = 0;
+    eventData.players.forEach(function(playerName) {
+      try {
+        var result = addNewPlayer(playerName);
+        if (!result.alreadyExisted) {
+          provisionedCount++;
+          Logger.log('Auto-provisioned new player: ' + playerName);
+        }
+      } catch (e) {
+        Logger.log('Failed to provision player: ' + playerName + ' - ' + e.toString());
+      }
+    });
+    if (provisionedCount > 0) {
+      Logger.log('Auto-provisioned ' + provisionedCount + ' new players from event tabs');
+    }
+
     // Step 4: Build attendance calendar (with batch writes)
     buildAttendanceCalendar(ss, eventData);
 

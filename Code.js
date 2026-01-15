@@ -199,24 +199,15 @@ function ensureSheetWithHeaders_(ss, sheetName, headers) {
 // PLAYER MANAGEMENT HELPERS
 // ============================================================================
 
+/**
+ * Gets all canonical player names.
+ * Delegates to getAllPreferredNames() from PlayerProvisioning.js.
+ * @param {Spreadsheet} ss - Spreadsheet (ignored, kept for backwards compatibility)
+ * @return {Array<string>} Array of player names
+ */
 function getAllCanonicalPlayers_(ss) {
-  var sheet = getSheetByNameCI_(ss, 'PreferredNames');
-  if (!sheet || sheet.getLastRow() <= 1) return [];
-
-  var data = sheet.getDataRange().getValues();
-  var headerMap = {};
-  for (var i = 0; i < data[0].length; i++) {
-    headerMap[String(data[0][i]).toLowerCase()] = i;
-  }
-
-  var nameCol = findPlayerColumn_(headerMap);
-  var players = [];
-
-  for (var r = 1; r < data.length; r++) {
-    var name = normalizePlayerName_(data[r][nameCol]);
-    if (name) players.push(name);
-  }
-  return players;
+  // Delegate to canonical implementation in PlayerProvisioning.js
+  return getAllPreferredNames();
 }
 
 function playerExistsInSheet_(sheet, playerName) {
@@ -265,39 +256,55 @@ function addPlayerToSheet_(sheet, playerName, defaultValues) {
   return true;
 }
 
+/**
+ * Provisions a player across all tracked sheets.
+ * Delegates to addNewPlayer() from PlayerProvisioning.js.
+ * @param {Spreadsheet} ss - Spreadsheet (ignored, kept for backwards compatibility)
+ * @param {string} canonicalName - Player name to provision
+ * @return {Object} Results with provisioned, alreadyExisted, and failed arrays
+ */
 function provisionPlayerEverywhere_(ss, canonicalName) {
-  var results = { provisioned: [], alreadyExisted: [], failed: [] };
+  // Delegate to canonical implementation in PlayerProvisioning.js
+  try {
+    var result = addNewPlayer(canonicalName);
+    var profileResult = result.profileResult || {};
 
-  var sheetsToProvision = [
-    { name: 'PreferredNames', defaults: { status: 'ACTIVE', created_at: new Date().toISOString() } },
-    { name: 'BP_Total', defaults: { BP_Historical: 0, BP_Redeemed: 0, BP_Current: 0, Flag_Points: 0, Attendance_Points: 0, Dice_Points: 0 } },
-    { name: 'Attendance_Missions', defaults: { Total_Events: 0, Attendance_Points: 0 } },
-    { name: 'Flag_Missions', defaults: { Cosmic_Selfie: false, Review_Writer: false, Social_Media_Star: false, Flag_Points: 0 } },
-    { name: 'Dice_Points', defaults: { Points: 0 } },
-    { name: 'Key_Tracker', defaults: { White: 0, Blue: 0, Black: 0, Red: 0, Green: 0, Total: 0, Rainbow: false } }
-  ];
+    var provisioned = [];
+    var alreadyExisted = [];
+    var failed = profileResult.skippedSheets || [];
 
-  for (var i = 0; i < sheetsToProvision.length; i++) {
-    var config = sheetsToProvision[i];
-    var sheet = getSheetByNameCI_(ss, config.name);
-
-    if (!sheet) {
-      results.failed.push(config.name + ' (sheet missing)');
-      continue;
-    }
-
-    if (playerExistsInSheet_(sheet, canonicalName)) {
-      results.alreadyExisted.push(config.name);
-    } else {
-      if (addPlayerToSheet_(sheet, canonicalName, config.defaults)) {
-        results.provisioned.push(config.name);
-      } else {
-        results.failed.push(config.name);
+    // Convert from PlayerProvisioning.js format to legacy format
+    for (var sheetName in profileResult.createdBySheet) {
+      if (profileResult.createdBySheet[sheetName]) {
+        provisioned.push(sheetName);
       }
     }
-  }
+    for (var sheetName in profileResult.existedBySheet) {
+      if (profileResult.existedBySheet[sheetName]) {
+        alreadyExisted.push(sheetName);
+      }
+    }
 
-  return results;
+    // Add PreferredNames status
+    if (result.alreadyExisted) {
+      alreadyExisted.unshift('PreferredNames');
+    } else {
+      provisioned.unshift('PreferredNames');
+    }
+
+    return {
+      provisioned: provisioned,
+      alreadyExisted: alreadyExisted,
+      failed: failed
+    };
+  } catch (e) {
+    Logger.log('provisionPlayerEverywhere_ error: ' + e.toString());
+    return {
+      provisioned: [],
+      alreadyExisted: [],
+      failed: ['Error: ' + e.toString()]
+    };
+  }
 }
 
 // ============================================================================

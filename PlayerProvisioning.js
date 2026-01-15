@@ -174,9 +174,10 @@ function ensurePlayerRowInSheet_(sheetName, preferredName, headerNames, options)
     throw new Error('Required key column not found in sheet "' + sheetName + '". Expected one of: ' + headerNames.join(', '));
   }
 
-  // Check if player already exists (case-sensitive match)
+  // Check if player already exists (case-insensitive match)
   const existingValues = getColumnValues_(sheet, keyColIndex);
-  const playerExists = existingValues.some(val => val === preferredName);
+  const nameLower = preferredName.toLowerCase();
+  const playerExists = existingValues.some(val => val.toLowerCase() === nameLower);
 
   if (playerExists) {
     return {
@@ -496,7 +497,8 @@ function diagnosePlayerProvisioning(preferredName) {
     }
 
     const existingValues = getColumnValues_(sheet, keyColIndex);
-    const playerExists = existingValues.some(function(val) { return val === name; });
+    const nameLower = name.toLowerCase();
+    const playerExists = existingValues.some(function(val) { return val.toLowerCase() === nameLower; });
 
     if (playerExists) {
       presentIn.push(target.sheetName);
@@ -511,4 +513,25 @@ function diagnosePlayerProvisioning(preferredName) {
     missingFrom: missingFrom,
     skipped: skipped
   };
+}
+
+// ============================================================================
+// DEBUG FUNCTIONS
+// ============================================================================
+
+/**
+ * Debug function to check player provisioning status.
+ * Logs which sheets have the player and which don't.
+ * Run this from the Script Editor to verify provisioning.
+ *
+ * @param {string} playerName - The player's name to check
+ * @return {Object} Diagnosis result
+ */
+function debug_checkPlayerProvisioning(playerName) {
+  var result = diagnosePlayerProvisioning(playerName);
+  Logger.log('=== PROVISIONING CHECK: ' + result.playerName + ' ===');
+  Logger.log('Present in: ' + (result.presentIn.length > 0 ? result.presentIn.join(', ') : '(none)'));
+  Logger.log('Missing from: ' + (result.missingFrom.length > 0 ? result.missingFrom.join(', ') : '(none)'));
+  Logger.log('Skipped (no sheet): ' + (result.skipped.length > 0 ? result.skipped.join(', ') : '(none)'));
+  return result;
 }
