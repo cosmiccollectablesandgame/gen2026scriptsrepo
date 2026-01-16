@@ -29,9 +29,12 @@
 
     /* Search */
     .search-box {
+      margin-bottom: 16px;
+    }
+    .search-row {
       display: flex;
       gap: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 8px;
     }
     .search-box input {
       flex: 1;
@@ -51,6 +54,7 @@
       cursor: pointer;
       font-size: 13px;
       font-weight: 600;
+      white-space: nowrap;
     }
     .btn-primary {
       background: #38761d;
@@ -63,6 +67,16 @@
       background: #f0f0f0;
       color: #333;
       border: 1px solid #ddd;
+    }
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+    .btn-info {
+      background: #1976d2;
+      color: white;
+    }
+    .btn-info:hover {
+      background: #1565c0;
     }
 
     /* Summary */
@@ -136,10 +150,19 @@
     .preorder-item:hover {
       background: #f8f9fa;
     }
+    .preorder-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
     .preorder-customer {
       font-weight: 600;
       color: #333;
       font-size: 13px;
+    }
+    .preorder-id {
+      font-size: 11px;
+      color: #888;
     }
     .preorder-details {
       font-size: 12px;
@@ -162,6 +185,17 @@
     .status-paid { background: #e8f5e9; color: #38761d; }
     .status-active { background: #e3f2fd; color: #1976d2; }
 
+    .item-list {
+      margin-top: 6px;
+      padding-left: 12px;
+      border-left: 2px solid #e0e0e0;
+    }
+    .item-row {
+      font-size: 11px;
+      color: #555;
+      margin: 2px 0;
+    }
+
     /* Loading / Empty */
     .loading, .empty-state {
       text-align: center;
@@ -169,13 +203,13 @@
       color: #666;
     }
     .loading::before {
-      content: '⏳';
+      content: '';
       display: block;
       font-size: 32px;
       margin-bottom: 10px;
     }
     .empty-state::before {
-      content: '📋';
+      content: '';
       display: block;
       font-size: 32px;
       margin-bottom: 10px;
@@ -188,27 +222,55 @@
       padding: 12px;
       border-radius: 6px;
       margin-bottom: 16px;
+      font-size: 13px;
+    }
+    .error-hint {
+      font-size: 11px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    /* Mode indicator */
+    .mode-indicator {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 8px;
+      padding: 4px 8px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      display: inline-block;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>📦 Preorder Status</h2>
+    <h2>Preorder Status</h2>
     <p class="subtitle">View and track customer preorders</p>
 
     <div class="search-box">
-      <input type="text" id="searchInput" placeholder="Filter by name, set, or item..." />
-      <button class="btn btn-primary" onclick="loadPreorders()">Search</button>
-      <button class="btn btn-secondary" onclick="clearSearch()">Clear</button>
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="Player name or search term..." />
+        <button class="btn btn-primary" onclick="lookupPlayer()">Lookup Player</button>
+      </div>
+      <div class="search-row">
+        <button class="btn btn-info" onclick="showAllOpen()">Show All Open</button>
+        <button class="btn btn-secondary" onclick="searchPreorders()">Search</button>
+        <button class="btn btn-secondary" onclick="clearSearch()">Clear</button>
+      </div>
     </div>
 
-    <div id="error" class="error" style="display: none;"></div>
+    <div id="error" class="error" style="display: none;">
+      <div id="errorMessage"></div>
+      <div class="error-hint">Check that Preorders_Sold sheet exists and has correct headers.</div>
+    </div>
 
     <div id="loading" class="loading" style="display: none;">
       Loading preorders...
     </div>
 
     <div id="content">
+      <div id="modeIndicator" class="mode-indicator" style="display: none;"></div>
+
       <!-- Summary -->
       <div class="summary" id="summary" style="display: none;">
         <div class="stat-box pending">
@@ -228,7 +290,7 @@
       <!-- Pending Payment Section -->
       <div class="section" id="pendingSection" style="display: none;">
         <div class="section-header pending-section">
-          <span>💳 Pending Payment</span>
+          <span>Pending Payment</span>
           <span class="count" id="pendingBadge">0</span>
         </div>
         <div class="preorder-list" id="pendingList"></div>
@@ -237,7 +299,7 @@
       <!-- Ready for Pickup Section -->
       <div class="section" id="readySection" style="display: none;">
         <div class="section-header ready-section">
-          <span>✅ Ready for Pickup</span>
+          <span>Ready for Pickup</span>
           <span class="count" id="readyBadge">0</span>
         </div>
         <div class="preorder-list" id="readyList"></div>
@@ -245,39 +307,80 @@
 
       <!-- Empty state -->
       <div id="emptyState" class="empty-state">
-        Click "Search" to load preorders, or enter a name to filter.
+        Click "Show All Open" to load all open preorders, or enter a player name and click "Lookup Player".
       </div>
     </div>
   </div>
 
   <script>
-    // Load preorders on initial load
+    var currentMode = null;
+
+    // Load all open preorders on initial load
     document.addEventListener('DOMContentLoaded', function() {
-      loadPreorders();
+      // Don't auto-load - let user choose
     });
 
-    // Enter key triggers search
+    // Enter key triggers player lookup
     document.getElementById('searchInput').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
-        loadPreorders();
+        var val = e.target.value.trim();
+        if (val) {
+          lookupPlayer();
+        } else {
+          showAllOpen();
+        }
       }
     });
 
     function clearSearch() {
       document.getElementById('searchInput').value = '';
-      loadPreorders();
+      hideError();
+      document.getElementById('summary').style.display = 'none';
+      document.getElementById('pendingSection').style.display = 'none';
+      document.getElementById('readySection').style.display = 'none';
+      document.getElementById('modeIndicator').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'block';
+      document.getElementById('emptyState').textContent = 'Click "Show All Open" to load all open preorders, or enter a player name and click "Lookup Player".';
     }
 
-    function loadPreorders() {
-      var search = document.getElementById('searchInput').value.trim();
+    function lookupPlayer() {
+      var name = document.getElementById('searchInput').value.trim();
+      if (!name) {
+        showError('Please enter a player name');
+        return;
+      }
 
+      currentMode = 'player';
       showLoading(true);
       hideError();
 
       google.script.run
-        .withSuccessHandler(onPreordersLoaded)
+        .withSuccessHandler(onApiResponse)
         .withFailureHandler(onError)
-        .getOpenPreorders(search);
+        .api_getPreorderStatus({ mode: 'player', preferredName: name });
+    }
+
+    function showAllOpen() {
+      currentMode = 'all_open';
+      showLoading(true);
+      hideError();
+
+      google.script.run
+        .withSuccessHandler(onApiResponse)
+        .withFailureHandler(onError)
+        .api_getPreorderStatus({ mode: 'all_open' });
+    }
+
+    function searchPreorders() {
+      var search = document.getElementById('searchInput').value.trim();
+      currentMode = 'search';
+      showLoading(true);
+      hideError();
+
+      google.script.run
+        .withSuccessHandler(onApiResponse)
+        .withFailureHandler(onError)
+        .api_getPreorderStatus({ mode: 'search', search: search });
     }
 
     function showLoading(show) {
@@ -289,28 +392,67 @@
       document.getElementById('error').style.display = 'none';
     }
 
-    function onError(error) {
-      showLoading(false);
-      document.getElementById('error').textContent = 'Error: ' + error.message;
+    function showError(message) {
+      document.getElementById('errorMessage').textContent = message;
       document.getElementById('error').style.display = 'block';
     }
 
-    function onPreordersLoaded(data) {
+    function onError(error) {
+      showLoading(false);
+      var msg = error.message || String(error);
+      showError('Error: ' + msg);
+      console.error('API Error:', error);
+    }
+
+    function onApiResponse(data) {
       showLoading(false);
 
       if (!data) {
-        showEmpty('No preorder data returned');
+        showError('No response from server');
         return;
       }
 
-      var pending = data.pendingPayment || [];
-      var ready = data.readyForPickup || [];
-      var summary = data.summary || {};
+      if (!data.ok) {
+        var errorMsg = data.errors && data.errors.length > 0
+          ? data.errors.join('; ')
+          : 'Unknown error';
+        showError(errorMsg);
+        return;
+      }
+
+      // Show mode indicator
+      var modeText = '';
+      if (data.mode === 'player') {
+        modeText = 'Showing preorders for: ' + (document.getElementById('searchInput').value || 'player');
+      } else if (data.mode === 'all_open') {
+        modeText = 'Showing all open preorders';
+      } else if (data.mode === 'search') {
+        modeText = 'Search results';
+      }
+      document.getElementById('modeIndicator').textContent = modeText + ' (Source: ' + (data.sourceSheet || 'unknown') + ')';
+      document.getElementById('modeIndicator').style.display = 'inline-block';
+
+      // Separate into pending payment and ready for pickup
+      var pending = [];
+      var ready = [];
+      var totalBalance = 0;
+
+      for (var i = 0; i < data.orders.length; i++) {
+        var order = data.orders[i];
+        if (!order.isOpen) continue;
+
+        if (order.balanceDue > 0) {
+          pending.push(order);
+          totalBalance += order.balanceDue;
+        } else {
+          ready.push(order);
+        }
+      }
 
       // Update summary
-      document.getElementById('pendingCount').textContent = summary.pendingPaymentCount || 0;
-      document.getElementById('readyCount').textContent = summary.readyForPickupCount || 0;
-      document.getElementById('totalBalance').textContent = formatCurrency(summary.totalBalanceDue || 0);
+      document.getElementById('pendingCount').textContent = pending.length;
+      document.getElementById('readyCount').textContent = ready.length;
+      document.getElementById('totalBalance').textContent = formatCurrency(totalBalance);
       document.getElementById('summary').style.display = 'grid';
 
       // Update badges
@@ -319,7 +461,7 @@
 
       // Render pending list
       if (pending.length > 0) {
-        document.getElementById('pendingList').innerHTML = pending.map(renderPreorderItem).join('');
+        document.getElementById('pendingList').innerHTML = pending.map(renderOrderItem).join('');
         document.getElementById('pendingSection').style.display = 'block';
       } else {
         document.getElementById('pendingSection').style.display = 'none';
@@ -327,7 +469,7 @@
 
       // Render ready list
       if (ready.length > 0) {
-        document.getElementById('readyList').innerHTML = ready.map(renderPreorderItem).join('');
+        document.getElementById('readyList').innerHTML = ready.map(renderOrderItem).join('');
         document.getElementById('readySection').style.display = 'block';
       } else {
         document.getElementById('readySection').style.display = 'none';
@@ -335,7 +477,10 @@
 
       // Show empty if both are empty
       if (pending.length === 0 && ready.length === 0) {
-        showEmpty('No open preorders found');
+        var emptyMsg = data.mode === 'player'
+          ? 'No open preorders found for this player'
+          : 'No open preorders found';
+        showEmpty(emptyMsg);
       } else {
         document.getElementById('emptyState').style.display = 'none';
       }
@@ -348,30 +493,58 @@
       document.getElementById('readySection').style.display = 'none';
     }
 
-    function renderPreorderItem(p) {
-      var name = p.PreferredName || p.preferred_name_id || p.preferredNameId || 'Unknown';
-      var setName = p.Set_Name || p.setName || '';
-      var itemName = p.Item_Name || p.itemName || '';
-      var qty = p.Qty || p.qty || 1;
-      var balance = p.Balance_Due !== undefined ? p.Balance_Due : (p.balanceDue || 0);
-      var status = p.Status || p.status || 'Active';
+    function renderOrderItem(order) {
+      var name = order.preferredName || 'Unknown';
+      var preorderId = order.preorderId || '';
+      var status = order.status || 'Active';
+      var balance = order.balanceDue || 0;
+      var items = order.items || [];
 
       var statusClass = 'status-active';
-      var statusNorm = status.toLowerCase().replace(/_/g, ' ');
+      var statusNorm = String(status).toLowerCase().replace(/_/g, ' ');
       if (statusNorm.includes('deposit')) statusClass = 'status-deposit';
       if (statusNorm.includes('paid') && !statusNorm.includes('deposit')) statusClass = 'status-paid';
 
-      return '<div class="preorder-item">' +
-        '<div class="preorder-customer">' + escapeHtml(name) + '</div>' +
-        '<div class="preorder-details">' +
-          '<strong>' + escapeHtml(setName) + '</strong> — ' + escapeHtml(itemName) +
-          ' (x' + qty + ')' +
-          (balance > 0 ? ' — <span class="preorder-balance">' + formatCurrency(balance) + ' due</span>' : '') +
-        '</div>' +
-        '<div style="margin-top: 4px;">' +
-          '<span class="preorder-status ' + statusClass + '">' + escapeHtml(status) + '</span>' +
-        '</div>' +
-      '</div>';
+      var html = '<div class="preorder-item">';
+      html += '<div class="preorder-header">';
+      html += '<div>';
+      html += '<div class="preorder-customer">' + escapeHtml(name) + '</div>';
+      if (preorderId) {
+        html += '<div class="preorder-id">Order: ' + escapeHtml(preorderId) + '</div>';
+      }
+      html += '</div>';
+      if (balance > 0) {
+        html += '<div class="preorder-balance">' + formatCurrency(balance) + ' due</div>';
+      }
+      html += '</div>';
+
+      // Render items
+      if (items.length > 0) {
+        html += '<div class="item-list">';
+        for (var i = 0; i < Math.min(items.length, 5); i++) {
+          var item = items[i];
+          html += '<div class="item-row">';
+          html += escapeHtml(item.setName || '') + ' - ' + escapeHtml(item.itemName || '');
+          if (item.qty > 1) {
+            html += ' (x' + item.qty + ')';
+          }
+          html += '</div>';
+        }
+        if (items.length > 5) {
+          html += '<div class="item-row">... and ' + (items.length - 5) + ' more items</div>';
+        }
+        html += '</div>';
+      }
+
+      html += '<div style="margin-top: 6px;">';
+      html += '<span class="preorder-status ' + statusClass + '">' + escapeHtml(status) + '</span>';
+      if (order.createdAt) {
+        html += ' <span style="font-size: 10px; color: #888;">Created: ' + escapeHtml(order.createdAt) + '</span>';
+      }
+      html += '</div>';
+      html += '</div>';
+
+      return html;
     }
 
     function formatCurrency(val) {

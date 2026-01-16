@@ -915,7 +915,8 @@ function getStoreCreditInfo_(name, errors) {
 }
 
 /**
- * Gets preorders info from Preorders_Sold sheet
+ * Gets preorders info using the canonical preorder service
+ * Orders are grouped by Preorder_ID with multiple line items per order
  * @param {string} name - Player name
  * @param {string[]} errors - Error array
  * @return {PreordersInfo}
@@ -924,128 +925,68 @@ function getStoreCreditInfo_(name, errors) {
 function getPreordersInfo_(name, errors) {
   const result = {
     active: [],
+    orders: [],  // Grouped orders
     historyCount: 0,
     totalCount: 0,
     openCount: 0,
     totalBalanceDue: 0,
     _source: 'not found',
-    _nameColumn: 'not found',
-    _matchedBy: 'none'
+    _preordersError: null
   };
 
   const nameLower = String(name).toLowerCase().trim();
   if (!nameLower) return result;
 
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    // Use canonical preorder service for grouped orders
+    const preorderData = getPreordersForPlayer_(name);
 
-    // Use canonical preorders sheet lookup (case-insensitive with aliases)
-    const preorderSheet = getPreordersSheet_(ss);
-    if (!preorderSheet) {
-      result._source = 'Preorders sheet not found';
-      return result;
+    result._source = preorderData._debug.sourceSheet || 'unknown';
+
+    if (preorderData._debug.errors && preorderData._debug.errors.length > 0) {
+      result._preordersError = preorderData._debug.errors.join('; ');
+      errors.push('Preorders: ' + result._preordersError);
     }
 
-    result._source = preorderSheet.getName();
+    // Map grouped orders to result
+    result.orders = preorderData.open;
+    result.openCount = preorderData.totals.openCount;
+    result.historyCount = preorderData.totals.openCount + preorderData.totals.closedCount;
+    result.totalCount = result.historyCount;
+    result.totalBalanceDue = preorderData.totals.openBalanceDue;
 
-    if (preorderSheet.getLastRow() <= 1) {
-      result._source += ' (empty)';
-      return result;
-    }
+    // Flatten to legacy active array (for backward compatibility with display)
+    // Take top 5 orders sorted by balance due
+    const sortedOrders = [...preorderData.open].sort((a, b) => b.balanceDue - a.balanceDue);
+    const topOrders = sortedOrders.slice(0, 5);
 
-    const data = preorderSheet.getDataRange().getValues();
-    const headers = data[0];
-
-    // Use canonical column resolver with synonyms
-    const cols = resolvePreordersCols_(headers);
-    result._nameColumn = cols.nameCol !== -1 ? headers[cols.nameCol] : 'not found';
-
-    // If no name column found, try Customer_Name fallback
-    let primaryNameCol = cols.nameCol;
-    let fallbackNameCol = cols.customerNameCol;
-
-    if (primaryNameCol === -1 && fallbackNameCol !== -1) {
-      primaryNameCol = fallbackNameCol;
-      result._nameColumn = headers[fallbackNameCol] + ' (fallback)';
-    }
-
-    if (primaryNameCol === -1) {
-      result._source += ' (no name column)';
-      return result;
-    }
-
-    // Scan all rows for matching preorders
-    const matchingRows = [];
-
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-
-      // Check primary name column (case-insensitive + trim)
-      const primaryName = String(row[primaryNameCol] || '').toLowerCase().trim();
-      let isMatch = (primaryName === nameLower);
-
-      // If no match on primary, try fallback Customer_Name if different column
-      if (!isMatch && fallbackNameCol !== -1 && fallbackNameCol !== primaryNameCol) {
-        const fallbackName = String(row[fallbackNameCol] || '').toLowerCase().trim();
-        isMatch = (fallbackName === nameLower);
-        if (isMatch && result._matchedBy === 'none') {
-          result._matchedBy = 'Customer_Name';
-        }
-      }
-
-      if (!isMatch) continue;
-
-      if (result._matchedBy === 'none') {
-        result._matchedBy = 'PreferredName';
-      }
-
-      result.totalCount++;
-
-      // Get status and picked up values
-      const statusValue = cols.statusCol !== -1 ? row[cols.statusCol] : '';
-      const pickedUpValue = cols.pickedUpCol !== -1 ? row[cols.pickedUpCol] : '';
-
-      // Use canonical open/closed detection
-      const isOpen = isPreorderOpen_(pickedUpValue, statusValue);
-      const balanceDue = cols.balanceDueCol !== -1 ? coerceNumber(row[cols.balanceDueCol], 0) : 0;
-
-      if (isOpen) {
-        result.openCount++;
-        result.historyCount++;
-
-        result.active.push({
-          rowIndex: i + 1,
-          preorderId: cols.preorderIdCol !== -1 ? String(row[cols.preorderIdCol] || '') : '',
-          setName: cols.setNameCol !== -1 ? String(row[cols.setNameCol] || '') : '',
-          itemName: cols.itemNameCol !== -1 ? String(row[cols.itemNameCol] || '') : '',
-          itemCode: cols.itemCodeCol !== -1 ? String(row[cols.itemCodeCol] || '') : '',
-          qty: cols.qtyCol !== -1 ? coerceNumber(row[cols.qtyCol], 1) : 1,
-          unitPrice: cols.unitPriceCol !== -1 ? coerceNumber(row[cols.unitPriceCol], 0) : 0,
-          totalDue: cols.totalDueCol !== -1 ? coerceNumber(row[cols.totalDueCol], 0) : 0,
-          depositPaid: cols.depositCol !== -1 ? coerceNumber(row[cols.depositCol], 0) : 0,
-          balanceDue: balanceDue,
-          targetPayoffDate: cols.targetPayoffDateCol !== -1 ? formatDateSafe_(row[cols.targetPayoffDateCol]) : '',
-          status: String(statusValue || 'Active'),
-          pickedUp: isPreorderPickedUp_(pickedUpValue),
-          notes: cols.notesCol !== -1 ? String(row[cols.notesCol] || '') : ''
-        });
-
-        result.totalBalanceDue += balanceDue;
-      } else {
-        // Still count in history even if closed
-        result.historyCount++;
-      }
-    }
-
-    // Limit active list to top 5 for display (sorted by balance due desc)
-    if (result.active.length > 5) {
-      result.active.sort((a, b) => b.balanceDue - a.balanceDue);
-      result.active = result.active.slice(0, 5);
+    for (const order of topOrders) {
+      // Create a single entry per order (with first item details)
+      const firstItem = order.items && order.items.length > 0 ? order.items[0] : {};
+      result.active.push({
+        rowIndex: order.rowNumbers && order.rowNumbers[0] || 0,
+        preorderId: order.preorderId || '',
+        setName: firstItem.setName || '',
+        itemName: firstItem.itemName || '',
+        itemCode: firstItem.itemCode || '',
+        qty: order.items ? order.items.reduce((sum, item) => sum + (item.qty || 1), 0) : 1,
+        unitPrice: firstItem.unitPrice || 0,
+        totalDue: order.totalDue || 0,
+        depositPaid: order.depositPaid || 0,
+        balanceDue: order.balanceDue || 0,
+        targetPayoffDate: order.targetPayoff || '',
+        status: order.status || 'Active',
+        pickedUp: order.pickedUp || false,
+        notes: order.notes || '',
+        itemCount: order.items ? order.items.length : 0,
+        items: order.items || []
+      });
     }
 
   } catch (e) {
+    result._preordersError = e.message;
     errors.push('Preorders lookup error: ' + e.message);
-    Logger.log('Preorders lookup error: ' + e.message);
+    Logger.log('Preorders lookup error: ' + e.message + '\n' + e.stack);
   }
 
   return result;
@@ -1542,12 +1483,13 @@ function debug_playerLookup(name) {
 }
 
 /**
- * Debug function: Shows preorder matching logic for a player
- * Uses canonical helpers to match real sheet structure
+ * LEGACY: Debug function for preorder matching
+ * Use debug_preorders() from preordersStatusService.js instead
  * @param {string} name - Player name (default: "Cy Diskin")
  * @return {Object} Debug info
+ * @deprecated Use debug_preorders from preordersStatusService.js
  */
-function debug_findPreordersForName(name) {
+function debug_findPreordersForName_LEGACY(name) {
   name = name || 'Cy Diskin';
 
   Logger.log('=== DEBUG: Preorders for "' + name + '" ===');
@@ -1694,17 +1636,20 @@ function debug_findPreordersForName(name) {
 }
 
 /**
- * Legacy alias for debug function
+ * LEGACY alias - use debug_preorders from preordersStatusService.js
+ * @deprecated
  */
-function debug_preorders(name) {
-  return debug_findPreordersForName(name);
+function debug_preorders_playerLookup_LEGACY(name) {
+  return debug_findPreordersForName_LEGACY(name);
 }
 
 /**
- * Debug function: Shows summary of all open preorders
+ * LEGACY: Shows summary of all open preorders
+ * Use debug_preordersOpenSummary from preordersStatusService.js
  * @return {Object} Summary of open preorders
+ * @deprecated
  */
-function debug_preordersOpenSummary() {
+function debug_preordersOpenSummary_LEGACY() {
   Logger.log('=== DEBUG: Open Preorders Summary ===');
   Logger.log('');
 
