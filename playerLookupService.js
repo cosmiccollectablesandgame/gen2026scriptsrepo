@@ -770,7 +770,7 @@ function getStoreCreditInfo_(name, errors) {
 }
 
 /**
- * Gets preorders info
+ * Gets preorders info from Preorders_Sold sheet
  * @param {string} name - Player name
  * @param {string[]} errors - Error array
  * @return {PreordersInfo}
@@ -779,48 +779,68 @@ function getStoreCreditInfo_(name, errors) {
 function getPreordersInfo_(name, errors) {
   const result = {
     active: [],
-    historyCount: 0
+    historyCount: 0,
+    totalBalanceDue: 0
   };
+
+  const nameLower = String(name).toLowerCase();
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // Try Preorders sheet
-    const preorderSheet = ss.getSheetByName('Preorders');
+    // Query Preorders_Sold sheet
+    const preorderSheet = ss.getSheetByName('Preorders_Sold');
     if (preorderSheet && preorderSheet.getLastRow() > 1) {
       const data = preorderSheet.getDataRange().getValues();
       const headers = data[0];
-      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name', 'Customer']);
-      const itemCol = findColumnIndex_(headers, ['Item', 'Item_Name', 'Product']);
-      const qtyCol = findColumnIndex_(headers, ['Qty', 'Quantity']);
-      const statusCol = findColumnIndex_(headers, ['Status', 'status']);
-      const setCol = findColumnIndex_(headers, ['Set', 'SetName', 'Set_Name']);
-      const priceCol = findColumnIndex_(headers, ['Price', 'Unit_Price']);
-      const paidCol = findColumnIndex_(headers, ['Paid', 'Paid_Amount']);
+
+      // Column mappings based on Preorders_Sold headers
+      const nameCol = headers.indexOf('PreferredName');
+      const idCol = headers.indexOf('Preorder_ID');
+      const setCol = headers.indexOf('Set_Name');
+      const itemCol = headers.indexOf('Item_Name');
+      const itemCodeCol = headers.indexOf('Item_Code');
+      const qtyCol = headers.indexOf('Qty');
+      const unitPriceCol = headers.indexOf('Unit_Price');
+      const totalDueCol = headers.indexOf('Total_Due');
+      const depositCol = headers.indexOf('Deposit_Paid');
+      const balanceCol = headers.indexOf('Balance_Due');
+      const statusCol = headers.indexOf('Status');
+      const pickedUpCol = headers.indexOf('Picked_Up?');
+      const targetDateCol = headers.indexOf('Target_Payoff_Date');
+      const notesCol = headers.indexOf('Notes');
 
       if (nameCol !== -1) {
         for (let i = 1; i < data.length; i++) {
-          if (String(data[i][nameCol]).toLowerCase() === name.toLowerCase()) {
+          if (String(data[i][nameCol]).toLowerCase() === nameLower) {
             result.historyCount++;
 
             const status = statusCol !== -1 ? String(data[i][statusCol] || 'Active') : 'Active';
-            const isActive = !['Completed', 'Cancelled', 'Picked Up'].includes(status);
+            const pickedUp = pickedUpCol !== -1 ? coerceBoolean(data[i][pickedUpCol]) : false;
+
+            // Active if not picked up and status isn't completed/cancelled
+            const isActive = !pickedUp && !['Completed', 'Cancelled', 'Picked Up', 'Fulfilled'].includes(status);
+
+            const balanceDue = balanceCol !== -1 ? coerceNumber(data[i][balanceCol], 0) : 0;
 
             if (isActive) {
-              const unitPrice = priceCol !== -1 ? coerceNumber(data[i][priceCol], 0) : 0;
-              const qty = qtyCol !== -1 ? coerceNumber(data[i][qtyCol], 1) : 1;
-              const paid = paidCol !== -1 ? coerceNumber(data[i][paidCol], 0) : 0;
-
               result.active.push({
                 rowIndex: i + 1,
+                preorderId: idCol !== -1 ? String(data[i][idCol] || '') : '',
                 setName: setCol !== -1 ? String(data[i][setCol] || '') : '',
                 itemName: itemCol !== -1 ? String(data[i][itemCol] || '') : '',
-                qty: qty,
-                unitPrice: unitPrice,
-                paidAmount: paid,
-                balanceDue: (unitPrice * qty) - paid,
-                status: status
+                itemCode: itemCodeCol !== -1 ? String(data[i][itemCodeCol] || '') : '',
+                qty: qtyCol !== -1 ? coerceNumber(data[i][qtyCol], 1) : 1,
+                unitPrice: unitPriceCol !== -1 ? coerceNumber(data[i][unitPriceCol], 0) : 0,
+                totalDue: totalDueCol !== -1 ? coerceNumber(data[i][totalDueCol], 0) : 0,
+                depositPaid: depositCol !== -1 ? coerceNumber(data[i][depositCol], 0) : 0,
+                balanceDue: balanceDue,
+                targetPayoffDate: targetDateCol !== -1 ? formatDateSafe_(data[i][targetDateCol]) : '',
+                status: status,
+                notes: notesCol !== -1 ? String(data[i][notesCol] || '') : ''
               });
+
+              result.totalBalanceDue += balanceDue;
             }
           }
         }
