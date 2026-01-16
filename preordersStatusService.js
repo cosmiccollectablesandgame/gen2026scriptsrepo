@@ -8,7 +8,17 @@
 // ============================================================================
 
 /**
+ * Gets open preorders for the UI sidebar (called by preorder_status.html)
+ * @param {string} searchFilter - Optional search text (name, set, item)
+ * @return {Object} { pendingPayment, readyForPickup, summary }
+ */
+function getOpenPreorders(searchFilter) {
+  return getPreordersByStatusCanonical_({ search: searchFilter || '' });
+}
+
+/**
  * Returns preorders grouped by status buckets for the status sidebar.
+ * Uses canonical helpers from utils.js for robust column/sheet resolution.
  * @param {Object} filters (optional)
  *   - search: string | null   (search text; matches name, set, item)
  *   - includeCancelled: boolean (default false)
@@ -26,34 +36,36 @@
  *   }
  * }
  */
-function getPreordersByStatus(filters) {
+function getPreordersByStatusCanonical_(filters) {
   filters = filters || {};
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Preorders_Sold');
+
+  // Use canonical sheet lookup with aliases
+  const sheet = getPreordersSheet_(ss);
 
   if (!sheet) {
-    throw new Error('Preorders_Sold sheet not found');
+    return buildEmptyPreorderResult_();
   }
 
   const data = sheet.getDataRange().getValues();
 
-  if (data.length === 0) {
-    return buildEmptyResult_();
+  if (data.length <= 1) {
+    return buildEmptyPreorderResult_();
   }
 
-  // Parse headers
+  // Use canonical column resolver
   const headers = data[0];
-  const headerIndex = buildHeaderIndex_(headers);
+  const cols = resolvePreordersCols_(headers);
 
   // Parse all rows into preorder objects
   const allPreorders = [];
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const preorder = parsePreorderRow_(row, i + 1, headerIndex);
+    const preorder = parsePreorderRowCanonical_(row, i + 1, cols, headers);
 
-    // Skip empty rows (no Preorder_ID)
-    if (!preorder.Preorder_ID && !preorder.preferred_name_id) {
+    // Skip empty rows
+    if (!preorder.Preorder_ID && !preorder.PreferredName) {
       continue;
     }
 
@@ -65,7 +77,7 @@ function getPreordersByStatus(filters) {
   if (filters.search && filters.search.trim()) {
     const searchLower = filters.search.trim().toLowerCase();
     filteredPreorders = allPreorders.filter(p => {
-      const name = (p.preferred_name_id || '').toLowerCase();
+      const name = (p.PreferredName || '').toLowerCase();
       const setName = (p.Set_Name || '').toLowerCase();
       const itemName = (p.Item_Name || '').toLowerCase();
       return name.includes(searchLower) ||
@@ -74,38 +86,30 @@ function getPreordersByStatus(filters) {
     });
   }
 
-  // Group into buckets
+  // Group into buckets using canonical open/closed detection
   const pendingPayment = [];
   const readyForPickup = [];
   const completed = [];
   let totalBalanceDue = 0;
 
   for (const preorder of filteredPreorders) {
-    const statusNorm = normalizeStatus_(preorder.Status);
     const balance = coerceNumber(preorder.Balance_Due, 0);
+    const isOpen = isPreorderOpen_(preorder.Picked_Up, preorder.Status);
 
-    const isCancelled = statusNorm === 'CANCELLED' || statusNorm === 'CANCELED';
-    const isPickedUp = statusNorm === 'PICKED UP' || statusNorm === 'COMPLETED';
-
-    // Track total balance due (for all non-cancelled with balance > 0)
-    if (!isCancelled && balance > 0) {
-      totalBalanceDue += balance;
-    }
-
-    // Group according to rules
-    if (isCancelled) {
-      // Cancelled goes to completed bucket (if includeCancelled is true)
+    if (!isOpen) {
+      // Closed preorders
       if (filters.includeCancelled) {
         completed.push(preorder);
       }
-    } else if (balance > 0) {
-      // Has balance due → pending payment
+      continue;
+    }
+
+    // Track total balance due for open preorders
+    if (balance > 0) {
+      totalBalanceDue += balance;
       pendingPayment.push(preorder);
-    } else if (isPickedUp) {
-      // Picked up or completed → completed bucket
-      completed.push(preorder);
     } else {
-      // Balance <= 0 and not picked up → ready for pickup
+      // Balance == 0 and open → ready for pickup
       readyForPickup.push(preorder);
     }
   }
@@ -114,9 +118,9 @@ function getPreordersByStatus(filters) {
   const sortBy = filters.sortBy || 'Created_At';
   const sortDir = filters.sortDir || 'asc';
 
-  sortBucket_(pendingPayment, sortBy, sortDir);
-  sortBucket_(readyForPickup, sortBy, sortDir);
-  sortBucket_(completed, sortBy, sortDir);
+  sortPreorderBucket_(pendingPayment, sortBy, sortDir);
+  sortPreorderBucket_(readyForPickup, sortBy, sortDir);
+  sortPreorderBucket_(completed, sortBy, sortDir);
 
   return {
     pendingPayment: pendingPayment,
@@ -131,15 +135,22 @@ function getPreordersByStatus(filters) {
   };
 }
 
+/**
+ * Legacy function - redirects to canonical implementation
+ */
+function getPreordersByStatus(filters) {
+  return getPreordersByStatusCanonical_(filters);
+}
+
 // ============================================================================
 // PRIVATE HELPERS
 // ============================================================================
 
 /**
- * Builds empty result object
+ * Builds empty result object for preorders
  * @private
  */
-function buildEmptyResult_() {
+function buildEmptyPreorderResult_() {
   return {
     pendingPayment: [],
     readyForPickup: [],
@@ -154,92 +165,63 @@ function buildEmptyResult_() {
 }
 
 /**
- * Builds a header-to-index mapping
- * @param {Array} headers - Header row
- * @return {Object} Map of header name to column index
- * @private
- */
-function buildHeaderIndex_(headers) {
-  const index = {};
-  for (let i = 0; i < headers.length; i++) {
-    const header = String(headers[i]).trim();
-    if (header) {
-      index[header] = i;
-    }
-  }
-  return index;
-}
-
-/**
- * Parses a single row into a preorder object
+ * Parses a single row into a preorder object using canonical column resolver
  * @param {Array} row - Row data
  * @param {number} rowNumber - Sheet row number (1-based)
- * @param {Object} headerIndex - Header-to-index mapping
+ * @param {Object} cols - Column index map from resolvePreordersCols_
+ * @param {Array} headers - Header row for raw access
  * @return {Object} Preorder object
  * @private
  */
-function parsePreorderRow_(row, rowNumber, headerIndex) {
-  const getValue = (headerName) => {
-    const idx = headerIndex[headerName];
-    return idx !== undefined ? row[idx] : undefined;
+function parsePreorderRowCanonical_(row, rowNumber, cols, headers) {
+  const getValue = (colKey) => {
+    const idx = cols[colKey + 'Col'];
+    return idx !== undefined && idx !== -1 ? row[idx] : undefined;
   };
 
-  // Format Created_At for display
-  let createdAt = getValue('Created_At');
-  if (createdAt instanceof Date) {
-    createdAt = Utilities.formatDate(createdAt, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  } else if (createdAt) {
-    createdAt = String(createdAt);
-  }
-
-  // Format Target_Payoff for display
-  let targetPayoff = getValue('Target_Payoff');
-  if (targetPayoff instanceof Date) {
-    targetPayoff = Utilities.formatDate(targetPayoff, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  } else if (targetPayoff) {
-    targetPayoff = String(targetPayoff);
-  }
+  // Format dates for display
+  const formatDate = (val) => {
+    if (!val) return '';
+    if (val instanceof Date) {
+      try {
+        return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      } catch (e) {
+        return String(val);
+      }
+    }
+    return String(val);
+  };
 
   return {
     rowNumber: rowNumber,
-    Preorder_ID: getValue('Preorder_ID'),
-    preferred_name_id: getValue('preferred_name_id'),
-    Contact_Info: getValue('Contact_Info'),
-    Set_Name: getValue('Set_Name'),
-    Item_Name: getValue('Item_Name'),
-    Item_Code: getValue('Item_Code'),
-    Qty: getValue('Qty'),
-    Unit_Price: getValue('Unit_Price'),
-    Total_Due: getValue('Total_Due'),
-    Deposit_Paid: getValue('Deposit_Paid'),
-    Balance_Due: getValue('Balance_Due'),
-    Target_Payoff: targetPayoff,
-    Status: getValue('Status'),
-    Notes: getValue('Notes'),
-    Created_At: createdAt,
-    Created_By: getValue('Created_By')
+    Preorder_ID: getValue('preorderId'),
+    PreferredName: getValue('name'),  // Use canonical name field
+    Contact_Info: getValue('contactInfo'),
+    Set_Name: getValue('setName'),
+    Item_Name: getValue('itemName'),
+    Item_Code: getValue('itemCode'),
+    Qty: getValue('qty'),
+    Unit_Price: getValue('unitPrice'),
+    Total_Due: getValue('totalDue'),
+    Deposit_Paid: getValue('deposit'),
+    Balance_Due: getValue('balanceDue'),
+    Target_Payoff: formatDate(getValue('targetPayoff')),
+    Status: getValue('status'),
+    Picked_Up: getValue('pickedUp'),  // Include picked up status
+    Notes: getValue('notes'),
+    Created_At: formatDate(getValue('createdAt')),
+    Created_By: getValue('createdBy')
   };
 }
 
 /**
- * Normalizes status string for comparison
- * @param {*} status - Raw status value
- * @return {string} Uppercase trimmed status
- * @private
- */
-function normalizeStatus_(status) {
-  if (!status) return '';
-  return String(status).trim().toUpperCase();
-}
-
-/**
- * Sorts a bucket array by specified field
+ * Sorts a preorder bucket array by specified field
  * @param {Array} bucket - Array of preorder objects
  * @param {string} sortBy - Field to sort by
  * @param {string} sortDir - 'asc' or 'desc'
  * @private
  */
-function sortBucket_(bucket, sortBy, sortDir) {
+function sortPreorderBucket_(bucket, sortBy, sortDir) {
   const multiplier = sortDir === 'desc' ? -1 : 1;
 
   bucket.sort((a, b) => {
@@ -263,8 +245,8 @@ function sortBucket_(bucket, sortBy, sortDir) {
 
     // Handle date fields
     if (sortBy === 'Created_At' || sortBy === 'Target_Payoff') {
-      const aDate = parseDate_(aVal);
-      const bDate = parseDate_(bVal);
+      const aDate = parsePreorderDate_(aVal);
+      const bDate = parsePreorderDate_(bVal);
 
       if (!aDate) return 1;
       if (!bDate) return -1;
@@ -278,12 +260,12 @@ function sortBucket_(bucket, sortBy, sortDir) {
 }
 
 /**
- * Parses various date formats
+ * Parses various date formats for preorders
  * @param {*} value - Date value (string or Date)
  * @return {Date|null} Parsed date or null
  * @private
  */
-function parseDate_(value) {
+function parsePreorderDate_(value) {
   if (!value) return null;
 
   if (value instanceof Date) {

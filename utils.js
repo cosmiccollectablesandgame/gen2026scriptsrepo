@@ -606,6 +606,125 @@ function getColumnValue_(row, headerMap, logicalName, defaultValue) {
 }
 
 // ============================================================================
+// PREORDERS ACCESS LAYER (Canonical)
+// ============================================================================
+
+/**
+ * Gets the Preorders sheet using alias resolution (case-insensitive)
+ * @param {Spreadsheet} ss - Spreadsheet (defaults to active)
+ * @return {Sheet|null} The preorders sheet or null
+ */
+function getPreordersSheet_(ss) {
+  ss = ss || SpreadsheetApp.getActiveSpreadsheet();
+  return getSheetByAliasesCI_(ss, ['Preorders_Sold', 'Preorders Sold', 'Preorders']);
+}
+
+/**
+ * Resolves preorder column indices from headers with synonym support
+ * @param {Array} headers - Header row
+ * @return {Object} Column index map with all preorder fields
+ */
+function resolvePreordersCols_(headers) {
+  // Define synonyms for each field
+  const synonyms = {
+    name: ['PreferredName', 'Preferred_Name', 'preferred_name_id', 'Customer_Name', 'Name', 'Player'],
+    status: ['Status', 'status'],
+    pickedUp: ['Picked_Up?', 'Picked Up?', 'Picked_Up', 'PickedUp?', 'PickedUp', 'Picked Up'],
+    balanceDue: ['Balance_Due', 'BalanceDue', 'Balance Due'],
+    deposit: ['Deposit_Paid', 'DepositPaid', 'Deposit Paid', 'Deposit'],
+    totalDue: ['Total_Due', 'TotalDue', 'Total Due', 'Total'],
+    setName: ['Set_Name', 'SetName', 'Set Name', 'Set'],
+    itemName: ['Item_Name', 'ItemName', 'Item Name', 'Item'],
+    qty: ['Qty', 'Quantity', 'qty'],
+    preorderId: ['Preorder_ID', 'PreorderId', 'Preorder ID', 'ID'],
+    itemCode: ['Item_Code', 'ItemCode', 'Item Code', 'Code'],
+    unitPrice: ['Unit_Price', 'UnitPrice', 'Unit Price', 'Price'],
+    lineTotal: ['Line_Total', 'LineTotal', 'Line Total'],
+    targetPayoff: ['Target_Payoff', 'TargetPayoff', 'Target Payoff'],
+    targetPayoffDate: ['Target_Payoff_Date', 'TargetPayoffDate', 'Target Payoff Date'],
+    notes: ['Notes', 'Note', 'notes'],
+    contactInfo: ['Contact_Info', 'ContactInfo', 'Contact Info', 'Contact'],
+    createdAt: ['Created_At', 'CreatedAt', 'Created At', 'Created'],
+    createdBy: ['Created_By', 'CreatedBy', 'Created By'],
+    customerName: ['Customer_Name', 'CustomerName', 'Customer Name'],
+    updatedAt: ['Updated_At', 'UpdatedAt', 'Updated At']
+  };
+
+  const result = {};
+  for (const field in synonyms) {
+    result[field + 'Col'] = findColumnIndex_(headers, synonyms[field]);
+  }
+
+  // Store raw header positions for direct access
+  result._headers = headers;
+  result._raw = {};
+  for (let i = 0; i < headers.length; i++) {
+    result._raw[headers[i]] = i;
+  }
+
+  return result;
+}
+
+/**
+ * Checks if a preorder is considered "picked up" (closed)
+ * @param {*} pickedUpValue - Value from Picked_Up? column
+ * @return {boolean} True if picked up
+ */
+function isPreorderPickedUp_(pickedUpValue) {
+  if (pickedUpValue === true) return true;
+  if (!pickedUpValue) return false;
+
+  const strVal = String(pickedUpValue).toLowerCase().trim();
+  return strVal === 'true' || strVal === 'yes' || strVal === 'y' ||
+         strVal === '1' || strVal === 'picked up' || strVal === 'picked';
+}
+
+/**
+ * Normalizes preorder status for comparison
+ * @param {*} status - Raw status value
+ * @return {string} Lowercase trimmed status
+ */
+function normalizePreorderStatus_(status) {
+  if (!status) return 'active';
+  return String(status).toLowerCase().trim().replace(/_/g, ' ');
+}
+
+/**
+ * Checks if a preorder status indicates it's closed/completed
+ * @param {string} normalizedStatus - Normalized status string
+ * @return {boolean} True if status indicates closed
+ */
+function isPreorderStatusClosed_(normalizedStatus) {
+  const closedStatuses = [
+    'completed', 'cancelled', 'canceled', 'picked up',
+    'fulfilled', 'closed', 'refunded'
+  ];
+  return closedStatuses.includes(normalizedStatus);
+}
+
+/**
+ * Determines if a preorder is OPEN (not picked up AND status not closed)
+ * @param {*} pickedUpValue - Value from Picked_Up? column
+ * @param {*} statusValue - Value from Status column
+ * @return {boolean} True if preorder is open
+ */
+function isPreorderOpen_(pickedUpValue, statusValue) {
+  // If picked up, it's closed
+  if (isPreorderPickedUp_(pickedUpValue)) {
+    return false;
+  }
+
+  // If status indicates closed, it's closed
+  const normalizedStatus = normalizePreorderStatus_(statusValue);
+  if (isPreorderStatusClosed_(normalizedStatus)) {
+    return false;
+  }
+
+  // Otherwise, it's open (including deposit_paid, paid_in_full, active, etc.)
+  return true;
+}
+
+// ============================================================================
 // EVENT TAB DETECTION (CANONICAL - Case-Insensitive)
 // ============================================================================
 

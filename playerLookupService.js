@@ -925,72 +925,124 @@ function getPreordersInfo_(name, errors) {
   const result = {
     active: [],
     historyCount: 0,
-    totalBalanceDue: 0
+    totalCount: 0,
+    openCount: 0,
+    totalBalanceDue: 0,
+    _source: 'not found',
+    _nameColumn: 'not found',
+    _matchedBy: 'none'
   };
 
-  const nameLower = String(name).toLowerCase();
+  const nameLower = String(name).toLowerCase().trim();
+  if (!nameLower) return result;
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // Query Preorders_Sold sheet
-    const preorderSheet = ss.getSheetByName('Preorders_Sold');
-    if (preorderSheet && preorderSheet.getLastRow() > 1) {
-      const data = preorderSheet.getDataRange().getValues();
-      const headers = data[0];
+    // Use canonical preorders sheet lookup (case-insensitive with aliases)
+    const preorderSheet = getPreordersSheet_(ss);
+    if (!preorderSheet) {
+      result._source = 'Preorders sheet not found';
+      return result;
+    }
 
-      // Column mappings based on Preorders_Sold headers
-      const nameCol = headers.indexOf('PreferredName');
-      const idCol = headers.indexOf('Preorder_ID');
-      const setCol = headers.indexOf('Set_Name');
-      const itemCol = headers.indexOf('Item_Name');
-      const itemCodeCol = headers.indexOf('Item_Code');
-      const qtyCol = headers.indexOf('Qty');
-      const unitPriceCol = headers.indexOf('Unit_Price');
-      const totalDueCol = headers.indexOf('Total_Due');
-      const depositCol = headers.indexOf('Deposit_Paid');
-      const balanceCol = headers.indexOf('Balance_Due');
-      const statusCol = headers.indexOf('Status');
-      const pickedUpCol = headers.indexOf('Picked_Up?');
-      const targetDateCol = headers.indexOf('Target_Payoff_Date');
-      const notesCol = headers.indexOf('Notes');
+    result._source = preorderSheet.getName();
 
-      if (nameCol !== -1) {
-        for (let i = 1; i < data.length; i++) {
-          if (String(data[i][nameCol]).toLowerCase() === nameLower) {
-            result.historyCount++;
+    if (preorderSheet.getLastRow() <= 1) {
+      result._source += ' (empty)';
+      return result;
+    }
 
-            const status = statusCol !== -1 ? String(data[i][statusCol] || 'Active') : 'Active';
-            const pickedUp = pickedUpCol !== -1 ? coerceBoolean(data[i][pickedUpCol]) : false;
+    const data = preorderSheet.getDataRange().getValues();
+    const headers = data[0];
 
-            // Active if not picked up and status isn't completed/cancelled
-            const isActive = !pickedUp && !['Completed', 'Cancelled', 'Picked Up', 'Fulfilled'].includes(status);
+    // Use canonical column resolver with synonyms
+    const cols = resolvePreordersCols_(headers);
+    result._nameColumn = cols.nameCol !== -1 ? headers[cols.nameCol] : 'not found';
 
-            const balanceDue = balanceCol !== -1 ? coerceNumber(data[i][balanceCol], 0) : 0;
+    // If no name column found, try Customer_Name fallback
+    let primaryNameCol = cols.nameCol;
+    let fallbackNameCol = cols.customerNameCol;
 
-            if (isActive) {
-              result.active.push({
-                rowIndex: i + 1,
-                preorderId: idCol !== -1 ? String(data[i][idCol] || '') : '',
-                setName: setCol !== -1 ? String(data[i][setCol] || '') : '',
-                itemName: itemCol !== -1 ? String(data[i][itemCol] || '') : '',
-                itemCode: itemCodeCol !== -1 ? String(data[i][itemCodeCol] || '') : '',
-                qty: qtyCol !== -1 ? coerceNumber(data[i][qtyCol], 1) : 1,
-                unitPrice: unitPriceCol !== -1 ? coerceNumber(data[i][unitPriceCol], 0) : 0,
-                totalDue: totalDueCol !== -1 ? coerceNumber(data[i][totalDueCol], 0) : 0,
-                depositPaid: depositCol !== -1 ? coerceNumber(data[i][depositCol], 0) : 0,
-                balanceDue: balanceDue,
-                targetPayoffDate: targetDateCol !== -1 ? formatDateSafe_(data[i][targetDateCol]) : '',
-                status: status,
-                notes: notesCol !== -1 ? String(data[i][notesCol] || '') : ''
-              });
+    if (primaryNameCol === -1 && fallbackNameCol !== -1) {
+      primaryNameCol = fallbackNameCol;
+      result._nameColumn = headers[fallbackNameCol] + ' (fallback)';
+    }
 
-              result.totalBalanceDue += balanceDue;
-            }
-          }
+    if (primaryNameCol === -1) {
+      result._source += ' (no name column)';
+      return result;
+    }
+
+    // Scan all rows for matching preorders
+    const matchingRows = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+
+      // Check primary name column (case-insensitive + trim)
+      const primaryName = String(row[primaryNameCol] || '').toLowerCase().trim();
+      let isMatch = (primaryName === nameLower);
+
+      // If no match on primary, try fallback Customer_Name if different column
+      if (!isMatch && fallbackNameCol !== -1 && fallbackNameCol !== primaryNameCol) {
+        const fallbackName = String(row[fallbackNameCol] || '').toLowerCase().trim();
+        isMatch = (fallbackName === nameLower);
+        if (isMatch && result._matchedBy === 'none') {
+          result._matchedBy = 'Customer_Name';
         }
       }
+
+      if (!isMatch) continue;
+
+      if (result._matchedBy === 'none') {
+        result._matchedBy = 'PreferredName';
+      }
+
+      result.totalCount++;
+
+      // Get status and picked up values
+      const statusValue = cols.statusCol !== -1 ? row[cols.statusCol] : '';
+      const pickedUpValue = cols.pickedUpCol !== -1 ? row[cols.pickedUpCol] : '';
+
+      // Use canonical open/closed detection
+      const isOpen = isPreorderOpen_(pickedUpValue, statusValue);
+      const balanceDue = cols.balanceDueCol !== -1 ? coerceNumber(row[cols.balanceDueCol], 0) : 0;
+
+      if (isOpen) {
+        result.openCount++;
+        result.historyCount++;
+
+        result.active.push({
+          rowIndex: i + 1,
+          preorderId: cols.preorderIdCol !== -1 ? String(row[cols.preorderIdCol] || '') : '',
+          setName: cols.setNameCol !== -1 ? String(row[cols.setNameCol] || '') : '',
+          itemName: cols.itemNameCol !== -1 ? String(row[cols.itemNameCol] || '') : '',
+          itemCode: cols.itemCodeCol !== -1 ? String(row[cols.itemCodeCol] || '') : '',
+          qty: cols.qtyCol !== -1 ? coerceNumber(row[cols.qtyCol], 1) : 1,
+          unitPrice: cols.unitPriceCol !== -1 ? coerceNumber(row[cols.unitPriceCol], 0) : 0,
+          totalDue: cols.totalDueCol !== -1 ? coerceNumber(row[cols.totalDueCol], 0) : 0,
+          depositPaid: cols.depositCol !== -1 ? coerceNumber(row[cols.depositCol], 0) : 0,
+          balanceDue: balanceDue,
+          targetPayoffDate: cols.targetPayoffDateCol !== -1 ? formatDateSafe_(row[cols.targetPayoffDateCol]) : '',
+          status: String(statusValue || 'Active'),
+          pickedUp: isPreorderPickedUp_(pickedUpValue),
+          notes: cols.notesCol !== -1 ? String(row[cols.notesCol] || '') : ''
+        });
+
+        result.totalBalanceDue += balanceDue;
+      } else {
+        // Still count in history even if closed
+        result.historyCount++;
+      }
     }
+
+    // Limit active list to top 5 for display (sorted by balance due desc)
+    if (result.active.length > 5) {
+      result.active.sort((a, b) => b.balanceDue - a.balanceDue);
+      result.active = result.active.slice(0, 5);
+    }
+
   } catch (e) {
     errors.push('Preorders lookup error: ' + e.message);
     Logger.log('Preorders lookup error: ' + e.message);
@@ -1491,34 +1543,40 @@ function debug_playerLookup(name) {
 
 /**
  * Debug function: Shows preorder matching logic for a player
+ * Uses canonical helpers to match real sheet structure
  * @param {string} name - Player name (default: "Cy Diskin")
  * @return {Object} Debug info
  */
-function debug_preorders(name) {
+function debug_findPreordersForName(name) {
   name = name || 'Cy Diskin';
 
   Logger.log('=== DEBUG: Preorders for "' + name + '" ===');
   Logger.log('');
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const nameLower = name.toLowerCase();
+  const nameLower = String(name).toLowerCase().trim();
 
   const result = {
     query: name,
     sheet: null,
+    columns: {},
+    matchesByPreferredName: 0,
+    matchesByCustomerName: 0,
     matchingRows: [],
     openCount: 0,
     closedCount: 0
   };
 
-  const preorderSheet = getSheetByAliasesCI_(ss, ['Preorders_Sold', 'Preorders']);
+  // Use canonical sheet lookup
+  const preorderSheet = getPreordersSheet_(ss);
   if (!preorderSheet) {
-    Logger.log('Preorders sheet NOT FOUND');
+    Logger.log('Preorders sheet NOT FOUND (tried aliases: Preorders_Sold, Preorders Sold, Preorders)');
     return result;
   }
 
   result.sheet = preorderSheet.getName();
-  Logger.log('Sheet: ' + result.sheet);
+  Logger.log('Sheet found: ' + result.sheet);
+  Logger.log('Row count: ' + preorderSheet.getLastRow());
 
   if (preorderSheet.getLastRow() <= 1) {
     Logger.log('Sheet is empty (no data rows)');
@@ -1528,52 +1586,198 @@ function debug_preorders(name) {
   const data = preorderSheet.getDataRange().getValues();
   const headers = data[0];
   Logger.log('Headers: ' + headers.join(', '));
-
-  const nameCol = headers.indexOf('PreferredName');
-  const statusCol = headers.indexOf('Status');
-  const pickedUpCol = headers.indexOf('Picked_Up?');
-  const setCol = headers.indexOf('Set_Name');
-  const itemCol = headers.indexOf('Item_Name');
-  const balanceCol = headers.indexOf('Balance_Due');
-
-  Logger.log('Name column index: ' + nameCol);
-  Logger.log('Status column index: ' + statusCol);
-  Logger.log('Picked_Up? column index: ' + pickedUpCol);
   Logger.log('');
 
+  // Use canonical column resolver
+  const cols = resolvePreordersCols_(headers);
+
+  // Log resolved columns
+  Logger.log('--- Resolved Column Indices ---');
+  Logger.log('nameCol: ' + cols.nameCol + ' → ' + (cols.nameCol !== -1 ? headers[cols.nameCol] : 'NOT FOUND'));
+  Logger.log('customerNameCol: ' + cols.customerNameCol + ' → ' + (cols.customerNameCol !== -1 ? headers[cols.customerNameCol] : 'NOT FOUND'));
+  Logger.log('statusCol: ' + cols.statusCol + ' → ' + (cols.statusCol !== -1 ? headers[cols.statusCol] : 'NOT FOUND'));
+  Logger.log('pickedUpCol: ' + cols.pickedUpCol + ' → ' + (cols.pickedUpCol !== -1 ? headers[cols.pickedUpCol] : 'NOT FOUND'));
+  Logger.log('preorderIdCol: ' + cols.preorderIdCol + ' → ' + (cols.preorderIdCol !== -1 ? headers[cols.preorderIdCol] : 'NOT FOUND'));
+  Logger.log('setNameCol: ' + cols.setNameCol + ' → ' + (cols.setNameCol !== -1 ? headers[cols.setNameCol] : 'NOT FOUND'));
+  Logger.log('itemNameCol: ' + cols.itemNameCol + ' → ' + (cols.itemNameCol !== -1 ? headers[cols.itemNameCol] : 'NOT FOUND'));
+  Logger.log('balanceDueCol: ' + cols.balanceDueCol + ' → ' + (cols.balanceDueCol !== -1 ? headers[cols.balanceDueCol] : 'NOT FOUND'));
+  Logger.log('');
+
+  result.columns = {
+    name: cols.nameCol !== -1 ? headers[cols.nameCol] : 'NOT FOUND',
+    customerName: cols.customerNameCol !== -1 ? headers[cols.customerNameCol] : 'NOT FOUND',
+    status: cols.statusCol !== -1 ? headers[cols.statusCol] : 'NOT FOUND',
+    pickedUp: cols.pickedUpCol !== -1 ? headers[cols.pickedUpCol] : 'NOT FOUND',
+    preorderId: cols.preorderIdCol !== -1 ? headers[cols.preorderIdCol] : 'NOT FOUND'
+  };
+
+  Logger.log('--- Matching Rows ---');
+
+  // Scan for matches (limit to first 10 for logging)
+  let logCount = 0;
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][nameCol]).toLowerCase() === nameLower) {
-      const status = statusCol !== -1 ? String(data[i][statusCol] || 'Active') : 'Active';
-      const pickedUp = pickedUpCol !== -1 ? coerceBoolean(data[i][pickedUpCol]) : false;
-      const isOpen = !pickedUp && !['Completed', 'Cancelled', 'Picked Up', 'Fulfilled'].includes(status);
+    const row = data[i];
 
-      const rowInfo = {
-        row: i + 1,
-        setName: setCol !== -1 ? data[i][setCol] : '',
-        itemName: itemCol !== -1 ? data[i][itemCol] : '',
-        status: status,
-        pickedUp: pickedUp,
-        isOpen: isOpen,
-        balanceDue: balanceCol !== -1 ? coerceNumber(data[i][balanceCol], 0) : 0
-      };
+    // Check PreferredName match
+    const prefName = cols.nameCol !== -1 ? String(row[cols.nameCol] || '').toLowerCase().trim() : '';
+    const custName = cols.customerNameCol !== -1 ? String(row[cols.customerNameCol] || '').toLowerCase().trim() : '';
 
-      result.matchingRows.push(rowInfo);
+    let matchedBy = null;
+    if (prefName === nameLower) {
+      matchedBy = 'PreferredName';
+      result.matchesByPreferredName++;
+    } else if (custName === nameLower) {
+      matchedBy = 'Customer_Name';
+      result.matchesByCustomerName++;
+    }
 
-      if (isOpen) {
-        result.openCount++;
-      } else {
-        result.closedCount++;
-      }
+    if (!matchedBy) continue;
 
-      Logger.log('Row ' + (i + 1) + ': ' + rowInfo.setName + ' / ' + rowInfo.itemName);
-      Logger.log('  Status: ' + status + ', Picked_Up?: ' + pickedUp + ' → ' + (isOpen ? 'OPEN' : 'CLOSED'));
+    // Get values
+    const preorderId = cols.preorderIdCol !== -1 ? row[cols.preorderIdCol] : '';
+    const prefNameValue = cols.nameCol !== -1 ? row[cols.nameCol] : '';
+    const statusValue = cols.statusCol !== -1 ? row[cols.statusCol] : '';
+    const pickedUpValue = cols.pickedUpCol !== -1 ? row[cols.pickedUpCol] : '';
+    const balanceDue = cols.balanceDueCol !== -1 ? coerceNumber(row[cols.balanceDueCol], 0) : 0;
+    const setName = cols.setNameCol !== -1 ? row[cols.setNameCol] : '';
+    const itemName = cols.itemNameCol !== -1 ? row[cols.itemNameCol] : '';
+
+    // Use canonical open/closed detection
+    const isOpen = isPreorderOpen_(pickedUpValue, statusValue);
+    const normalizedStatus = normalizePreorderStatus_(statusValue);
+
+    const rowInfo = {
+      row: i + 1,
+      matchedBy: matchedBy,
+      preorderId: preorderId,
+      preferredName: prefNameValue,
+      setName: setName,
+      itemName: itemName,
+      status: statusValue,
+      statusNormalized: normalizedStatus,
+      pickedUpRaw: pickedUpValue,
+      pickedUpParsed: isPreorderPickedUp_(pickedUpValue),
+      isOpen: isOpen,
+      balanceDue: balanceDue
+    };
+
+    result.matchingRows.push(rowInfo);
+
+    if (isOpen) {
+      result.openCount++;
+    } else {
+      result.closedCount++;
+    }
+
+    // Log first 10 rows
+    if (logCount < 10) {
+      Logger.log('Row ' + (i + 1) + ' [' + matchedBy + ']: ' + preorderId);
+      Logger.log('  Name: ' + prefNameValue);
+      Logger.log('  Set/Item: ' + setName + ' / ' + itemName);
+      Logger.log('  Status: "' + statusValue + '" → normalized: "' + normalizedStatus + '"');
+      Logger.log('  Picked_Up?: ' + JSON.stringify(pickedUpValue) + ' → parsed: ' + isPreorderPickedUp_(pickedUpValue));
+      Logger.log('  Balance Due: ' + balanceDue);
+      Logger.log('  → ' + (isOpen ? 'OPEN' : 'CLOSED'));
+      Logger.log('');
+      logCount++;
     }
   }
 
-  Logger.log('');
-  Logger.log('Summary: ' + result.matchingRows.length + ' total (' + result.openCount + ' open, ' + result.closedCount + ' closed)');
+  Logger.log('=== SUMMARY ===');
+  Logger.log('Total matches: ' + result.matchingRows.length);
+  Logger.log('  By PreferredName: ' + result.matchesByPreferredName);
+  Logger.log('  By Customer_Name: ' + result.matchesByCustomerName);
+  Logger.log('Open: ' + result.openCount);
+  Logger.log('Closed: ' + result.closedCount);
 
   return result;
+}
+
+/**
+ * Legacy alias for debug function
+ */
+function debug_preorders(name) {
+  return debug_findPreordersForName(name);
+}
+
+/**
+ * Debug function: Shows summary of all open preorders
+ * @return {Object} Summary of open preorders
+ */
+function debug_preordersOpenSummary() {
+  Logger.log('=== DEBUG: Open Preorders Summary ===');
+  Logger.log('');
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const preorderSheet = getPreordersSheet_(ss);
+
+  if (!preorderSheet) {
+    Logger.log('Preorders sheet NOT FOUND');
+    return { error: 'Sheet not found', totalOpen: 0 };
+  }
+
+  const data = preorderSheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Logger.log('Sheet is empty');
+    return { error: 'Sheet empty', totalOpen: 0 };
+  }
+
+  const headers = data[0];
+  const cols = resolvePreordersCols_(headers);
+
+  // Group open preorders by player
+  const openByPlayer = {};
+  let totalOpen = 0;
+  let totalBalance = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const statusValue = cols.statusCol !== -1 ? row[cols.statusCol] : '';
+    const pickedUpValue = cols.pickedUpCol !== -1 ? row[cols.pickedUpCol] : '';
+
+    if (!isPreorderOpen_(pickedUpValue, statusValue)) continue;
+
+    totalOpen++;
+    const playerName = cols.nameCol !== -1 ? String(row[cols.nameCol] || 'Unknown').trim() : 'Unknown';
+    const balanceDue = cols.balanceDueCol !== -1 ? coerceNumber(row[cols.balanceDueCol], 0) : 0;
+
+    if (!openByPlayer[playerName]) {
+      openByPlayer[playerName] = { count: 0, totalBalance: 0, items: [] };
+    }
+    openByPlayer[playerName].count++;
+    openByPlayer[playerName].totalBalance += balanceDue;
+    totalBalance += balanceDue;
+
+    if (openByPlayer[playerName].items.length < 3) {
+      const setName = cols.setNameCol !== -1 ? row[cols.setNameCol] : '';
+      const itemName = cols.itemNameCol !== -1 ? row[cols.itemNameCol] : '';
+      openByPlayer[playerName].items.push(setName + ' / ' + itemName);
+    }
+  }
+
+  Logger.log('Total open preorders: ' + totalOpen);
+  Logger.log('Total balance due: $' + totalBalance.toFixed(2));
+  Logger.log('Players with open preorders: ' + Object.keys(openByPlayer).length);
+  Logger.log('');
+
+  // Log top 10 players by count
+  const sorted = Object.entries(openByPlayer)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 10);
+
+  Logger.log('--- Top 10 Players by Open Count ---');
+  for (const [player, info] of sorted) {
+    Logger.log(player + ': ' + info.count + ' open ($' + info.totalBalance.toFixed(2) + ')');
+    info.items.forEach(item => Logger.log('  - ' + item));
+  }
+
+  return {
+    sheetName: preorderSheet.getName(),
+    totalOpen: totalOpen,
+    totalBalance: totalBalance,
+    playerCount: Object.keys(openByPlayer).length,
+    byPlayer: openByPlayer
+  };
 }
 
 /**
