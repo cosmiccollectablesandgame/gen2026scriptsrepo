@@ -536,6 +536,7 @@ function getIdentityInfo_(name, errors) {
 
 /**
  * Gets bonus points info with full breakdown
+ * Uses alias mapping and case-insensitive lookups for robustness
  * @param {string} name - Player name
  * @param {string[]} errors - Error array
  * @return {BonusPointsInfo}
@@ -557,6 +558,14 @@ function getBonusPointsInfo_(name, errors) {
       attendancePoints: 0,
       flagPoints: 0,
       dicePoints: 0
+    },
+    // Debug info for troubleshooting
+    _sources: {
+      bpTotal: 'not found',
+      redeemedBP: 'not found',
+      attendance: 'not found',
+      flag: 'not found',
+      dice: 'not found'
     }
   };
 
@@ -566,35 +575,55 @@ function getBonusPointsInfo_(name, errors) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
     // ─────────────────────────────────────────────────────────────────────
-    // Query BP_Total for main BP values
+    // Query BP_Total for main BP values + breakdown columns
+    // Real headers: PreferredName, BP_Current, Attendance Mission Points,
+    //               Flag Mission Points, Dice Roll Points, LastUpdated,
+    //               BP_Historical, BP_Redeemed
     // ─────────────────────────────────────────────────────────────────────
-    const bpSheet = ss.getSheetByName('BP_Total');
+    const bpSheet = getSheetByAliasesCI_(ss, ['BP_Total']);
     if (bpSheet && bpSheet.getLastRow() > 1) {
+      result._sources.bpTotal = bpSheet.getName();
       const data = bpSheet.getDataRange().getValues();
       const headers = data[0];
+
+      // Name column
       const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name', 'preferred_name_id']);
-      const currentCol = findColumnIndex_(headers, ['BP_Current', 'BP', 'Bonus_Points', 'Capped_BP']);
-      const histCol = findColumnIndex_(headers, ['Historical_BP', 'Lifetime_Earned', 'Total_Earned', 'BP_Historical']);
-      const redeemedCol = findColumnIndex_(headers, ['Redeemed_BP', 'BP_Redeemed', 'Spent', 'Total_Spent']);
-      const updatedCol = findColumnIndex_(headers, ['LastUpdated', 'Last_Updated']);
+      // BP columns
+      const currentCol = findColumnIndex_(headers, ['BP_Current', 'Current_BP', 'Capped_BP', 'BP']);
+      const histCol = findColumnIndex_(headers, ['BP_Historical', 'Historical_BP', 'Historical', 'Lifetime_BP']);
+      const redeemedCol = findColumnIndex_(headers, ['BP_Redeemed', 'Redeemed_BP', 'Total_Redeemed']);
+      const updatedCol = findColumnIndex_(headers, ['LastUpdated', 'Last_Updated', 'LastUpdate']);
+      // Breakdown columns (EXACT names from real BP_Total sheet)
+      const attPointsCol = findColumnIndex_(headers, ['Attendance Mission Points', 'Attendance_Mission_Points']);
+      const flagPointsCol = findColumnIndex_(headers, ['Flag Mission Points', 'Flag_Mission_Points']);
+      const dicePointsCol = findColumnIndex_(headers, ['Dice Roll Points', 'Dice_Points']);
 
       if (nameCol !== -1) {
         for (let i = 1; i < data.length; i++) {
           if (String(data[i][nameCol]).toLowerCase() === nameLower) {
+            // Main BP values
             result.current = currentCol !== -1 ? coerceNumber(data[i][currentCol], 0) : 0;
             result.breakdown.current = result.current;
 
             if (histCol !== -1) {
-              result.lifetimeEarned = coerceNumber(data[i][histCol], result.current);
+              result.lifetimeEarned = coerceNumber(data[i][histCol], 0);
               result.breakdown.historical = result.lifetimeEarned;
-            } else {
-              result.lifetimeEarned = result.current;
-              result.breakdown.historical = result.current;
             }
 
             if (redeemedCol !== -1) {
               result.lifetimeSpent = coerceNumber(data[i][redeemedCol], 0);
               result.breakdown.redeemed = result.lifetimeSpent;
+            }
+
+            // Breakdown from BP_Total (preferred source)
+            if (attPointsCol !== -1) {
+              result.breakdown.attendancePoints = coerceNumber(data[i][attPointsCol], 0);
+            }
+            if (flagPointsCol !== -1) {
+              result.breakdown.flagPoints = coerceNumber(data[i][flagPointsCol], 0);
+            }
+            if (dicePointsCol !== -1) {
+              result.breakdown.dicePoints = coerceNumber(data[i][dicePointsCol], 0);
             }
 
             if (updatedCol !== -1 && data[i][updatedCol]) {
@@ -607,69 +636,107 @@ function getBonusPointsInfo_(name, errors) {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Query Attendance_Missions for attendance points
+    // Query Redeemed_BP sheet for authoritative redemption history
+    // Real headers: PreferredName, Total_Redeemed, Item_Redeemed, Notes,
+    //               BP_Current, BP_Historical, LastUpdated
     // ─────────────────────────────────────────────────────────────────────
-    const attendSheet = ss.getSheetByName('Attendance_Missions');
-    if (attendSheet && attendSheet.getLastRow() > 1) {
-      const data = attendSheet.getDataRange().getValues();
+    const redeemedSheet = getSheetByAliasesCI_(ss, ['Redeemed_BP']);
+    if (redeemedSheet && redeemedSheet.getLastRow() > 1) {
+      result._sources.redeemedBP = redeemedSheet.getName();
+      const data = redeemedSheet.getDataRange().getValues();
       const headers = data[0];
       const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
-      const pointsCol = findColumnIndex_(headers, ['Attendance_Points', 'AttendancePoints', 'Points', 'BP_Earned']);
+      const totalRedeemedCol = findColumnIndex_(headers, ['Total_Redeemed', 'TotalRedeemed', 'Redeemed']);
 
-      if (nameCol !== -1) {
+      if (nameCol !== -1 && totalRedeemedCol !== -1) {
+        // Sum all redemptions for this player (could be multiple rows)
+        let totalRedeemed = 0;
         for (let i = 1; i < data.length; i++) {
           if (String(data[i][nameCol]).toLowerCase() === nameLower) {
-            if (pointsCol !== -1) {
+            totalRedeemed += coerceNumber(data[i][totalRedeemedCol], 0);
+          }
+        }
+        // Use Redeemed_BP as authoritative source if found
+        if (totalRedeemed > 0 || result.breakdown.redeemed === 0) {
+          result.lifetimeSpent = totalRedeemed;
+          result.breakdown.redeemed = totalRedeemed;
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Fallback: Query source sheets if BP_Total breakdown is empty
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Attendance_Missions (column "Points")
+    if (result.breakdown.attendancePoints === 0) {
+      const attendSheet = getSheetByAliasesCI_(ss, ['Attendance_Missions', 'Attendance_Points']);
+      if (attendSheet && attendSheet.getLastRow() > 1) {
+        result._sources.attendance = attendSheet.getName();
+        const data = attendSheet.getDataRange().getValues();
+        const headers = data[0];
+        const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
+        const pointsCol = findColumnIndex_(headers, ['Points', 'Attendance_Points', 'AttendancePoints', 'BP_Earned']);
+
+        if (nameCol !== -1 && pointsCol !== -1) {
+          for (let i = 1; i < data.length; i++) {
+            if (String(data[i][nameCol]).toLowerCase() === nameLower) {
               result.breakdown.attendancePoints = coerceNumber(data[i][pointsCol], 0);
+              break;
             }
-            break;
           }
         }
       }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Query Flag_Missions for flag mission points
-    // ─────────────────────────────────────────────────────────────────────
-    const flagSheet = ss.getSheetByName('Flag_Missions');
-    if (flagSheet && flagSheet.getLastRow() > 1) {
-      const data = flagSheet.getDataRange().getValues();
-      const headers = data[0];
-      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
-      const pointsCol = findColumnIndex_(headers, ['Flag Mission Points', 'Flag Points', 'FlagPoints', 'Flag_Points']);
+    // Flag_Missions (column "Flag Mission Points")
+    if (result.breakdown.flagPoints === 0) {
+      const flagSheet = getSheetByAliasesCI_(ss, ['Flag_Missions', 'Flag_Points']);
+      if (flagSheet && flagSheet.getLastRow() > 1) {
+        result._sources.flag = flagSheet.getName();
+        const data = flagSheet.getDataRange().getValues();
+        const headers = data[0];
+        const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
+        const pointsCol = findColumnIndex_(headers, ['Flag Mission Points', 'Flag_Mission_Points', 'FlagPoints']);
 
-      if (nameCol !== -1) {
-        for (let i = 1; i < data.length; i++) {
-          if (String(data[i][nameCol]).toLowerCase() === nameLower) {
-            if (pointsCol !== -1) {
+        if (nameCol !== -1 && pointsCol !== -1) {
+          for (let i = 1; i < data.length; i++) {
+            if (String(data[i][nameCol]).toLowerCase() === nameLower) {
               result.breakdown.flagPoints = coerceNumber(data[i][pointsCol], 0);
+              break;
             }
-            break;
           }
         }
       }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Query Dice_Points for dice roll points
-    // ─────────────────────────────────────────────────────────────────────
-    const diceSheet = ss.getSheetByName('Dice_Points') || ss.getSheetByName('Dice Roll Points');
-    if (diceSheet && diceSheet.getLastRow() > 1) {
-      const data = diceSheet.getDataRange().getValues();
-      const headers = data[0];
-      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
-      const pointsCol = findColumnIndex_(headers, ['Points', 'Dice_Points', 'DicePoints', 'Total']);
+    // Dice Roll Points (column "Dice Roll Points")
+    if (result.breakdown.dicePoints === 0) {
+      const diceSheet = getSheetByAliasesCI_(ss, ['Dice Roll Points', 'Dice_Points']);
+      if (diceSheet && diceSheet.getLastRow() > 1) {
+        result._sources.dice = diceSheet.getName();
+        const data = diceSheet.getDataRange().getValues();
+        const headers = data[0];
+        const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
+        const pointsCol = findColumnIndex_(headers, ['Dice Roll Points', 'Dice_Points', 'DicePoints', 'Points']);
 
-      if (nameCol !== -1) {
-        for (let i = 1; i < data.length; i++) {
-          if (String(data[i][nameCol]).toLowerCase() === nameLower) {
-            if (pointsCol !== -1) {
+        if (nameCol !== -1 && pointsCol !== -1) {
+          for (let i = 1; i < data.length; i++) {
+            if (String(data[i][nameCol]).toLowerCase() === nameLower) {
               result.breakdown.dicePoints = coerceNumber(data[i][pointsCol], 0);
+              break;
             }
-            break;
           }
         }
       }
+    }
+
+    // If historical is 0 but we have breakdown values, compute it
+    if (result.breakdown.historical === 0) {
+      result.breakdown.historical = result.breakdown.attendancePoints +
+                                    result.breakdown.flagPoints +
+                                    result.breakdown.dicePoints;
+      result.lifetimeEarned = result.breakdown.historical;
     }
 
   } catch (e) {
@@ -734,29 +801,107 @@ function getStoreCreditInfo_(name, errors) {
     balance: 0,
     currency: 'USD',
     lastUpdated: '',
-    lastTxSummary: ''
+    lastTxSummary: '',
+    transactionCount: 0,
+    _source: 'not found',
+    _nameColumn: 'not found'
   };
+
+  const nameLower = String(name).toLowerCase();
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // Try Store_Credit sheet
-    const scSheet = ss.getSheetByName('Store_Credit');
-    if (scSheet && scSheet.getLastRow() > 1) {
-      const data = scSheet.getDataRange().getValues();
+    // ─────────────────────────────────────────────────────────────────────
+    // Query Store_Credit_Ledger (ledger with transactions)
+    // Real headers: Timestamp, preferred_name_id (OR PreferredName), InOut,
+    //               Amount, Reason, Category, TenderType, Description,
+    //               POSRefType, POSRefId, RunningBalance, RowId
+    // ─────────────────────────────────────────────────────────────────────
+    const ledgerSheet = getSheetByAliasesCI_(ss, ['Store_Credit_Ledger', 'Store_Credit']);
+    if (ledgerSheet && ledgerSheet.getLastRow() > 1) {
+      result._source = ledgerSheet.getName();
+      const data = ledgerSheet.getDataRange().getValues();
       const headers = data[0];
-      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
-      const balanceCol = findColumnIndex_(headers, ['Balance', 'Credit', 'Amount']);
-      const updatedCol = findColumnIndex_(headers, ['LastUpdated', 'Last_Updated']);
 
-      if (nameCol !== -1 && balanceCol !== -1) {
+      // Support both preferred_name_id and PreferredName (transition support)
+      const nameCol = findColumnIndex_(headers, ['PreferredName', 'preferred_name_id', 'Preferred_Name', 'Player', 'Name']);
+      const amountCol = findColumnIndex_(headers, ['Amount', 'Balance', 'Credit']);
+      const inOutCol = findColumnIndex_(headers, ['InOut', 'Type', 'Direction']);
+      const runningBalanceCol = findColumnIndex_(headers, ['RunningBalance', 'Running_Balance', 'Balance']);
+      const timestampCol = findColumnIndex_(headers, ['Timestamp', 'Date', 'Created_At']);
+      const reasonCol = findColumnIndex_(headers, ['Reason', 'Description', 'Notes']);
+
+      result._nameColumn = nameCol !== -1 ? headers[nameCol] : 'not found';
+
+      if (nameCol !== -1) {
+        // Find all transactions for this player and get latest running balance
+        let latestTimestamp = null;
+        let latestBalance = 0;
+        let latestReason = '';
+
         for (let i = 1; i < data.length; i++) {
-          if (String(data[i][nameCol]).toLowerCase() === name.toLowerCase()) {
-            result.balance = coerceNumber(data[i][balanceCol], 0);
-            if (updatedCol !== -1 && data[i][updatedCol]) {
-              result.lastUpdated = formatDateSafe_(data[i][updatedCol]);
+          const rowName = String(data[i][nameCol]).toLowerCase();
+          if (rowName === nameLower) {
+            result.transactionCount++;
+
+            // Get running balance if available, otherwise compute from InOut + Amount
+            if (runningBalanceCol !== -1) {
+              const timestamp = timestampCol !== -1 ? data[i][timestampCol] : null;
+              if (!latestTimestamp || (timestamp && new Date(timestamp) > new Date(latestTimestamp))) {
+                latestTimestamp = timestamp;
+                latestBalance = coerceNumber(data[i][runningBalanceCol], 0);
+                latestReason = reasonCol !== -1 ? String(data[i][reasonCol] || '') : '';
+              }
+            } else if (amountCol !== -1 && inOutCol !== -1) {
+              // Compute balance from InOut and Amount
+              const inOut = String(data[i][inOutCol]).toUpperCase();
+              const amount = coerceNumber(data[i][amountCol], 0);
+              if (inOut === 'IN' || inOut === 'ADD' || inOut === 'CREDIT') {
+                result.balance += amount;
+              } else if (inOut === 'OUT' || inOut === 'SUBTRACT' || inOut === 'DEBIT' || inOut === 'SPEND') {
+                result.balance -= amount;
+              }
             }
-            break;
+          }
+        }
+
+        // Use running balance approach if we found it
+        if (runningBalanceCol !== -1 && result.transactionCount > 0) {
+          result.balance = latestBalance;
+          result.lastTxSummary = latestReason;
+          if (latestTimestamp) {
+            result.lastUpdated = formatDateSafe_(latestTimestamp);
+          }
+        }
+      } else {
+        // Name column not found - report schema issue
+        result._source = ledgerSheet.getName() + ' (schema mismatch - name column not found)';
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Fallback: Try simple Store_Credit sheet (single row per player)
+    // ─────────────────────────────────────────────────────────────────────
+    if (result._source === 'not found' || result._nameColumn === 'not found') {
+      const scSheet = getSheetByAliasesCI_(ss, ['Store_Credit']);
+      if (scSheet && scSheet.getLastRow() > 1 && scSheet.getName() !== result._source) {
+        result._source = scSheet.getName() + ' (fallback)';
+        const data = scSheet.getDataRange().getValues();
+        const headers = data[0];
+        const nameCol = findColumnIndex_(headers, ['PreferredName', 'preferred_name_id', 'Preferred_Name', 'Name']);
+        const balanceCol = findColumnIndex_(headers, ['Balance', 'Credit', 'Amount']);
+        const updatedCol = findColumnIndex_(headers, ['LastUpdated', 'Last_Updated']);
+
+        if (nameCol !== -1 && balanceCol !== -1) {
+          for (let i = 1; i < data.length; i++) {
+            if (String(data[i][nameCol]).toLowerCase() === nameLower) {
+              result.balance = coerceNumber(data[i][balanceCol], 0);
+              if (updatedCol !== -1 && data[i][updatedCol]) {
+                result.lastUpdated = formatDateSafe_(data[i][updatedCol]);
+              }
+              break;
+            }
           }
         }
       }
@@ -1248,4 +1393,282 @@ function getPlayerBP(name) {
     Logger.log('getPlayerBP error: ' + e.message);
     return 0;
   }
+}
+
+// ============================================================================
+// DEBUG TOOLS
+// ============================================================================
+
+/**
+ * Debug function: Shows detailed player lookup data sources and values
+ * Run from Script Editor to troubleshoot player lookup issues
+ * @param {string} name - Player name to look up (default: "Cy Diskin")
+ * @return {Object} Debug info object
+ */
+function debug_playerLookup(name) {
+  name = name || 'Cy Diskin';
+
+  Logger.log('=== DEBUG: Player Lookup for "' + name + '" ===');
+  Logger.log('');
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const result = {
+    query: name,
+    sheets: {},
+    profile: null
+  };
+
+  // Check each relevant sheet
+  const sheetChecks = [
+    { aliases: ['BP_Total'], desc: 'BP Total' },
+    { aliases: ['Redeemed_BP'], desc: 'Redeemed BP' },
+    { aliases: ['Attendance_Missions'], desc: 'Attendance Missions' },
+    { aliases: ['Flag_Missions'], desc: 'Flag Missions' },
+    { aliases: ['Dice Roll Points', 'Dice_Points'], desc: 'Dice Points' },
+    { aliases: ['Key_Tracker'], desc: 'Key Tracker' },
+    { aliases: ['Preorders_Sold'], desc: 'Preorders' },
+    { aliases: ['Store_Credit_Ledger', 'Store_Credit'], desc: 'Store Credit' }
+  ];
+
+  const nameLower = name.toLowerCase();
+
+  for (const check of sheetChecks) {
+    const sheet = getSheetByAliasesCI_(ss, check.aliases);
+    if (sheet) {
+      const sheetInfo = {
+        found: true,
+        name: sheet.getName(),
+        rowCount: sheet.getLastRow(),
+        headers: [],
+        playerFound: false,
+        playerRow: null,
+        playerData: {}
+      };
+
+      if (sheet.getLastRow() > 1) {
+        const data = sheet.getDataRange().getValues();
+        sheetInfo.headers = data[0];
+
+        const nameCol = findColumnIndex_(data[0], ['PreferredName', 'Preferred_Name', 'preferred_name_id', 'Name', 'Player']);
+        if (nameCol !== -1) {
+          for (let i = 1; i < data.length; i++) {
+            if (String(data[i][nameCol]).toLowerCase() === nameLower) {
+              sheetInfo.playerFound = true;
+              sheetInfo.playerRow = i + 1;
+              // Store all column values
+              for (let j = 0; j < data[0].length; j++) {
+                sheetInfo.playerData[data[0][j]] = data[i][j];
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      result.sheets[check.desc] = sheetInfo;
+      Logger.log('--- ' + check.desc + ' ---');
+      Logger.log('Sheet: ' + sheet.getName());
+      Logger.log('Player found: ' + sheetInfo.playerFound + (sheetInfo.playerRow ? ' (row ' + sheetInfo.playerRow + ')' : ''));
+      if (sheetInfo.playerFound) {
+        Logger.log('Data: ' + JSON.stringify(sheetInfo.playerData, null, 2));
+      }
+      Logger.log('');
+    } else {
+      result.sheets[check.desc] = { found: false, aliases: check.aliases };
+      Logger.log('--- ' + check.desc + ' ---');
+      Logger.log('Sheet NOT FOUND (tried: ' + check.aliases.join(', ') + ')');
+      Logger.log('');
+    }
+  }
+
+  // Get full profile
+  Logger.log('=== FULL PROFILE ===');
+  result.profile = getPlayerLookupProfile(name);
+  Logger.log(JSON.stringify(result.profile, null, 2));
+
+  return result;
+}
+
+/**
+ * Debug function: Shows preorder matching logic for a player
+ * @param {string} name - Player name (default: "Cy Diskin")
+ * @return {Object} Debug info
+ */
+function debug_preorders(name) {
+  name = name || 'Cy Diskin';
+
+  Logger.log('=== DEBUG: Preorders for "' + name + '" ===');
+  Logger.log('');
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const nameLower = name.toLowerCase();
+
+  const result = {
+    query: name,
+    sheet: null,
+    matchingRows: [],
+    openCount: 0,
+    closedCount: 0
+  };
+
+  const preorderSheet = getSheetByAliasesCI_(ss, ['Preorders_Sold', 'Preorders']);
+  if (!preorderSheet) {
+    Logger.log('Preorders sheet NOT FOUND');
+    return result;
+  }
+
+  result.sheet = preorderSheet.getName();
+  Logger.log('Sheet: ' + result.sheet);
+
+  if (preorderSheet.getLastRow() <= 1) {
+    Logger.log('Sheet is empty (no data rows)');
+    return result;
+  }
+
+  const data = preorderSheet.getDataRange().getValues();
+  const headers = data[0];
+  Logger.log('Headers: ' + headers.join(', '));
+
+  const nameCol = headers.indexOf('PreferredName');
+  const statusCol = headers.indexOf('Status');
+  const pickedUpCol = headers.indexOf('Picked_Up?');
+  const setCol = headers.indexOf('Set_Name');
+  const itemCol = headers.indexOf('Item_Name');
+  const balanceCol = headers.indexOf('Balance_Due');
+
+  Logger.log('Name column index: ' + nameCol);
+  Logger.log('Status column index: ' + statusCol);
+  Logger.log('Picked_Up? column index: ' + pickedUpCol);
+  Logger.log('');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][nameCol]).toLowerCase() === nameLower) {
+      const status = statusCol !== -1 ? String(data[i][statusCol] || 'Active') : 'Active';
+      const pickedUp = pickedUpCol !== -1 ? coerceBoolean(data[i][pickedUpCol]) : false;
+      const isOpen = !pickedUp && !['Completed', 'Cancelled', 'Picked Up', 'Fulfilled'].includes(status);
+
+      const rowInfo = {
+        row: i + 1,
+        setName: setCol !== -1 ? data[i][setCol] : '',
+        itemName: itemCol !== -1 ? data[i][itemCol] : '',
+        status: status,
+        pickedUp: pickedUp,
+        isOpen: isOpen,
+        balanceDue: balanceCol !== -1 ? coerceNumber(data[i][balanceCol], 0) : 0
+      };
+
+      result.matchingRows.push(rowInfo);
+
+      if (isOpen) {
+        result.openCount++;
+      } else {
+        result.closedCount++;
+      }
+
+      Logger.log('Row ' + (i + 1) + ': ' + rowInfo.setName + ' / ' + rowInfo.itemName);
+      Logger.log('  Status: ' + status + ', Picked_Up?: ' + pickedUp + ' → ' + (isOpen ? 'OPEN' : 'CLOSED'));
+    }
+  }
+
+  Logger.log('');
+  Logger.log('Summary: ' + result.matchingRows.length + ' total (' + result.openCount + ' open, ' + result.closedCount + ' closed)');
+
+  return result;
+}
+
+/**
+ * Debug function: Shows BP river source sheets and sample data
+ * @return {Object} Debug info about BP sources
+ */
+function debug_bpRiverPreview() {
+  Logger.log('=== DEBUG: BP River Preview ===');
+  Logger.log('');
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const result = {
+    sources: {},
+    bpTotal: null,
+    samplePlayers: []
+  };
+
+  // Check source sheets
+  const sources = [
+    { key: 'attendance', aliases: ['Attendance_Missions'], pointsCol: ['Points', 'Attendance_Points'] },
+    { key: 'flag', aliases: ['Flag_Missions'], pointsCol: ['Flag Mission Points', 'Flag_Mission_Points'] },
+    { key: 'dice', aliases: ['Dice Roll Points', 'Dice_Points'], pointsCol: ['Dice Roll Points', 'Dice_Points', 'Points'] }
+  ];
+
+  for (const src of sources) {
+    const sheet = getSheetByAliasesCI_(ss, src.aliases);
+    if (sheet) {
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      const pointsIdx = findColumnIndex_(headers, src.pointsCol);
+
+      result.sources[src.key] = {
+        found: true,
+        sheetName: sheet.getName(),
+        rowCount: sheet.getLastRow() - 1,
+        headers: headers,
+        pointsColumn: pointsIdx !== -1 ? headers[pointsIdx] : 'NOT FOUND'
+      };
+
+      Logger.log('--- ' + src.key.toUpperCase() + ' ---');
+      Logger.log('Sheet: ' + sheet.getName());
+      Logger.log('Rows: ' + (sheet.getLastRow() - 1));
+      Logger.log('Points column: ' + (pointsIdx !== -1 ? headers[pointsIdx] : 'NOT FOUND'));
+    } else {
+      result.sources[src.key] = { found: false, tried: src.aliases };
+      Logger.log('--- ' + src.key.toUpperCase() + ' ---');
+      Logger.log('NOT FOUND (tried: ' + src.aliases.join(', ') + ')');
+    }
+    Logger.log('');
+  }
+
+  // Check BP_Total
+  const bpSheet = getSheetByAliasesCI_(ss, ['BP_Total']);
+  if (bpSheet && bpSheet.getLastRow() > 1) {
+    const data = bpSheet.getDataRange().getValues();
+    const headers = data[0];
+
+    result.bpTotal = {
+      found: true,
+      sheetName: bpSheet.getName(),
+      rowCount: bpSheet.getLastRow() - 1,
+      headers: headers
+    };
+
+    Logger.log('--- BP_TOTAL ---');
+    Logger.log('Sheet: ' + bpSheet.getName());
+    Logger.log('Rows: ' + (bpSheet.getLastRow() - 1));
+    Logger.log('Headers: ' + headers.join(', '));
+    Logger.log('');
+
+    // Sample first 5 players
+    const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
+    const currentCol = findColumnIndex_(headers, ['BP_Current', 'Current_BP']);
+    const attCol = findColumnIndex_(headers, ['Attendance Mission Points']);
+    const flagCol = findColumnIndex_(headers, ['Flag Mission Points']);
+    const diceCol = findColumnIndex_(headers, ['Dice Roll Points']);
+
+    Logger.log('--- SAMPLE PLAYERS (first 5) ---');
+    for (let i = 1; i < Math.min(6, data.length); i++) {
+      const player = {
+        name: nameCol !== -1 ? data[i][nameCol] : 'N/A',
+        current: currentCol !== -1 ? data[i][currentCol] : 'N/A',
+        attendance: attCol !== -1 ? data[i][attCol] : 'N/A',
+        flag: flagCol !== -1 ? data[i][flagCol] : 'N/A',
+        dice: diceCol !== -1 ? data[i][diceCol] : 'N/A'
+      };
+      result.samplePlayers.push(player);
+      Logger.log(player.name + ': Current=' + player.current +
+                 ' (Att=' + player.attendance + ', Flag=' + player.flag + ', Dice=' + player.dice + ')');
+    }
+  } else {
+    result.bpTotal = { found: false };
+    Logger.log('--- BP_TOTAL ---');
+    Logger.log('NOT FOUND');
+  }
+
+  return result;
 }

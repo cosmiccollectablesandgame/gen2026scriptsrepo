@@ -439,6 +439,173 @@ function deepClone(obj) {
 }
 
 // ============================================================================
+// SHEET ALIAS MAPPING (Case-Insensitive)
+// ============================================================================
+
+/**
+ * Sheet alias map - maps logical names to possible real sheet names
+ * @return {Object} Map of logical name -> array of aliases
+ */
+function getSheetAliases_() {
+  return {
+    'DICE_POINTS': ['Dice Roll Points', 'Dice_Points'],
+    'FLAG_MISSIONS': ['Flag_Missions', 'Flag_Points'],
+    'ATTENDANCE_MISSIONS': ['Attendance_Missions', 'Attendance_Points'],
+    'BP_TOTAL': ['BP_Total'],
+    'KEY_TRACKER': ['Key_Tracker'],
+    'PREORDERS': ['Preorders_Sold', 'Preorders'],
+    'STORE_CREDIT_LEDGER': ['Store_Credit_Ledger'],
+    'REDEEMED_BP': ['Redeemed_BP'],
+    'PREFERRED_NAMES': ['PreferredNames', 'Preferred_Names']
+  };
+}
+
+/**
+ * Gets a sheet by name (case-insensitive)
+ * @param {Spreadsheet} ss - Spreadsheet object
+ * @param {string} name - Sheet name to find
+ * @return {Sheet|null} Found sheet or null
+ */
+function getSheetByNameCI_(ss, name) {
+  if (!ss || !name) return null;
+  const nameLower = String(name).toLowerCase();
+  const sheets = ss.getSheets();
+  for (let i = 0; i < sheets.length; i++) {
+    if (sheets[i].getName().toLowerCase() === nameLower) {
+      return sheets[i];
+    }
+  }
+  return null;
+}
+
+/**
+ * Gets a sheet by trying multiple alias names (case-insensitive)
+ * @param {Spreadsheet} ss - Spreadsheet object
+ * @param {string[]} aliases - Array of possible sheet names to try
+ * @return {Sheet|null} First found sheet or null
+ */
+function getSheetByAliasesCI_(ss, aliases) {
+  if (!ss || !aliases || !aliases.length) return null;
+  for (let i = 0; i < aliases.length; i++) {
+    const sheet = getSheetByNameCI_(ss, aliases[i]);
+    if (sheet) return sheet;
+  }
+  return null;
+}
+
+/**
+ * Gets a sheet by logical name using alias map
+ * @param {Spreadsheet} ss - Spreadsheet object
+ * @param {string} logicalName - Logical name (e.g., 'DICE_POINTS')
+ * @return {Sheet|null} Found sheet or null
+ */
+function getSheetByLogicalName_(ss, logicalName) {
+  const aliasMap = getSheetAliases_();
+  const aliases = aliasMap[logicalName];
+  if (!aliases) {
+    // Fallback: try the logical name itself
+    return getSheetByNameCI_(ss, logicalName);
+  }
+  return getSheetByAliasesCI_(ss, aliases);
+}
+
+// ============================================================================
+// COLUMN SYNONYM MAPPING (Header Resolution)
+// ============================================================================
+
+/**
+ * Column synonym groups - each group represents the same logical field
+ * @return {Object} Map of logical field -> array of possible header names
+ */
+function getColumnSynonyms_() {
+  return {
+    // Player name column
+    'NAME': ['PreferredName', 'Preferred_Name', 'preferred_name_id', 'Player', 'Name', 'Customer_Name'],
+
+    // BP columns
+    'BP_CURRENT': ['BP_Current', 'Current_BP', 'Capped_BP', 'BP'],
+    'BP_HISTORICAL': ['BP_Historical', 'Historical_BP', 'Historical', 'Lifetime_BP', 'Total_Earned'],
+    'BP_REDEEMED': ['BP_Redeemed', 'Redeemed_BP', 'Total_Redeemed', 'Spent'],
+
+    // BP source breakdown columns (EXACT names from real sheets)
+    'ATTENDANCE_POINTS': ['Attendance Mission Points', 'Attendance_Mission_Points', 'AttendancePoints', 'Points'],
+    'FLAG_POINTS': ['Flag Mission Points', 'Flag_Mission_Points', 'FlagPoints', 'Flag_Points'],
+    'DICE_POINTS': ['Dice Roll Points', 'Dice_Points', 'DicePoints', 'Points'],
+
+    // Last updated
+    'LAST_UPDATED': ['LastUpdated', 'Last_Updated', 'LastUpdate', 'Updated_At'],
+
+    // Store credit
+    'AMOUNT': ['Amount', 'Balance', 'Credit', 'Total'],
+    'INOUT': ['InOut', 'Type', 'Direction'],
+    'RUNNING_BALANCE': ['RunningBalance', 'Running_Balance', 'Balance']
+  };
+}
+
+/**
+ * Finds column index using synonym mapping
+ * @param {Array} headers - Header row array
+ * @param {string|string[]} synonyms - Logical name or array of possible names
+ * @return {number} Column index (0-based) or -1 if not found
+ */
+function findColumnBySynonym_(headers, synonyms) {
+  if (!headers) return -1;
+
+  // If string, look up in synonym map
+  let namesToTry = synonyms;
+  if (typeof synonyms === 'string') {
+    const synonymMap = getColumnSynonyms_();
+    namesToTry = synonymMap[synonyms] || [synonyms];
+  }
+
+  // Try each possible name
+  for (let i = 0; i < namesToTry.length; i++) {
+    const idx = headers.indexOf(namesToTry[i]);
+    if (idx !== -1) return idx;
+  }
+
+  return -1;
+}
+
+/**
+ * Creates a header map for a sheet's headers
+ * Maps logical column names to actual indices
+ * @param {Array} headers - Header row array
+ * @return {Object} Map of logical name -> column index
+ */
+function createHeaderMap_(headers) {
+  const synonymMap = getColumnSynonyms_();
+  const result = {};
+
+  // Map each logical name to its column index
+  for (const logicalName in synonymMap) {
+    result[logicalName] = findColumnBySynonym_(headers, synonymMap[logicalName]);
+  }
+
+  // Also store raw header positions
+  result._raw = {};
+  for (let i = 0; i < headers.length; i++) {
+    result._raw[headers[i]] = i;
+  }
+
+  return result;
+}
+
+/**
+ * Gets column value from a row using header map
+ * @param {Array} row - Data row
+ * @param {Object} headerMap - Header map from createHeaderMap_
+ * @param {string} logicalName - Logical column name
+ * @param {*} defaultValue - Default value if column not found
+ * @return {*} Cell value or default
+ */
+function getColumnValue_(row, headerMap, logicalName, defaultValue) {
+  const idx = headerMap[logicalName];
+  if (idx === -1 || idx === undefined) return defaultValue;
+  return row[idx] !== undefined ? row[idx] : defaultValue;
+}
+
+// ============================================================================
 // EVENT TAB DETECTION (CANONICAL - Case-Insensitive)
 // ============================================================================
 
