@@ -84,17 +84,14 @@ function addDicePoints(preferredName, amount, metadata) {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     
-    // Find columns with flexible matching
-    const nameCol = findColumnIndex_(headers, ['PreferredName', 'Name', 'Player']);
-    const pointsCol = findColumnIndex_(headers, ['Dice Roll Points', 'Dice_Points', 'DicePoints', 'Points']);
-    const updatedCol = findColumnIndex_(headers, ['LastUpdated', 'Last_Updated', 'Updated']);
-    
-    if (nameCol === -1) {
-      return { success: false, error: 'PreferredName column not found in Dice Roll Points sheet' };
-    }
-    
-    if (pointsCol === -1) {
-      return { success: false, error: 'Points column not found in Dice Roll Points sheet' };
+    // Use header resolver
+    let nameCol, pointsCol, updatedCol;
+    try {
+      nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME);
+      pointsCol = resolveHeaderIndex(headers, BP_HEADERS.DICE_POINTS);
+      updatedCol = resolveHeaderIndex(headers, BP_HEADERS.LAST_UPDATED, false);
+    } catch (e) {
+      return { success: false, error: e.message };
     }
     
     // Find existing player row
@@ -255,13 +252,15 @@ function awardBPDirect_(preferredName, amount, source, metadata) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   
-  const nameCol = findColumnIndex_(headers, ['PreferredName', 'Name']);
-  const currentBPCol = findColumnIndex_(headers, ['Current_BP', 'BP_Current', 'CurrentBP']);
-  const historicalCol = findColumnIndex_(headers, ['Historical_BP', 'HistoricalBP']);
-  const updatedCol = findColumnIndex_(headers, ['LastUpdated', 'Last_Updated']);
-  
-  if (nameCol === -1 || currentBPCol === -1) {
-    return { success: false, error: 'Invalid BP_Total schema' };
+  // Use header resolver
+  let nameCol, currentBPCol, historicalCol, updatedCol;
+  try {
+    nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME);
+    currentBPCol = resolveHeaderIndex(headers, BP_HEADERS.CURRENT_BP);
+    historicalCol = resolveHeaderIndex(headers, BP_HEADERS.HISTORICAL_BP, false);
+    updatedCol = resolveHeaderIndex(headers, BP_HEADERS.LAST_UPDATED, false);
+  } catch (e) {
+    return { success: false, error: 'Invalid BP_Total schema: ' + e.message };
   }
   
   // Get global cap (default 100)
@@ -369,10 +368,20 @@ function addPrestigeOverflowFallback_(preferredName, overflow) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   
-  const nameCol = 0;
-  const prestigeCol = findColumnIndex_(headers, ['Prestige_Points', 'PrestigePoints', 'Prestige']);
-  const updatedCol = findColumnIndex_(headers, ['Last_Updated', 'LastUpdated']);
+  // Use header resolver
+  let nameCol, prestigeCol, updatedCol;
+  try {
+    nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME, false);
+    prestigeCol = resolveHeaderIndex(headers, BP_HEADERS.PRESTIGE_BP, false);
+    updatedCol = resolveHeaderIndex(headers, BP_HEADERS.LAST_UPDATED, false);
+  } catch (e) {
+    // Fallback for legacy schema
+    nameCol = 0;
+    prestigeCol = -1;
+    updatedCol = -1;
+  }
   
+  if (nameCol === -1) nameCol = 0;
   if (prestigeCol === -1) return;
   
   let playerRow = -1;
