@@ -69,10 +69,12 @@ function parseEventSheetName(name) {
 
 /**
  * Returns ISO week key for a date
+ * Uses existing getWeekNumber() from MissionHelpers.js if available
  * @param {Date} date
  * @return {string} "YYYY-Www" format
  */
 function getISOWeekKey(date) {
+  // Calculate ISO week using the same logic as MissionHelpers.getWeekNumber
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -424,96 +426,111 @@ function computeAttendanceMissionPoints(stats) {
  * @return {number} Number of players updated
  */
 function syncAttendanceMissions() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Attendance_Missions');
-  
-  if (!sheet) {
-    throw new Error('Attendance_Missions sheet not found');
-  }
-  
-  // Scan all events
-  Logger.log('Scanning event tabs...');
-  const { events, playerEvents } = scanAllEvents();
-  Logger.log('Found ' + events.length + ' events, ' + playerEvents.size + ' players');
-  
-  // Get current sheet data
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  
-  // Build column map
-  const colMap = {};
-  for (let i = 0; i < headers.length; i++) {
-    colMap[headers[i]] = i;
-  }
-  
-  // Verify required columns exist
-  const requiredCols = [
-    'PreferredName', 'First Contact', 'Stellar Explorer', 'Deck Diver',
-    'Lunar Loyalty', 'Meteor Shower', 'Sealed Voyager', 'Draft Navigator',
-    'Stellar Scholar', 'Interstellar Strategist', 'Black Hole Survivor',
-    'Free Play Events', 'Points'
-  ];
-  
-  for (const col of requiredCols) {
-    if (colMap[col] === undefined) {
-      throw new Error('Missing required column: ' + col);
-    }
-  }
-  
-  // Build existing rows map
-  const existingRows = new Map();
-  for (let i = 1; i < data.length; i++) {
-    const name = String(data[i][colMap['PreferredName']] || '').trim();
-    if (name) {
-      existingRows.set(name, i + 1); // 1-based row number
-    }
-  }
-  
-  let updatedCount = 0;
-  
-  // Process each player
-  for (const [playerId, eventList] of playerEvents) {
-    const stats = computePlayerStats(playerId, eventList);
-    const awards = computeAttendanceMissionPoints(stats);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Attendance_Missions');
     
-    if (existingRows.has(playerId)) {
-      // Update existing row
-      const rowNum = existingRows.get(playerId);
-      
-      for (const [missionName, value] of Object.entries(awards)) {
-        if (colMap[missionName] !== undefined) {
-          sheet.getRange(rowNum, colMap[missionName] + 1).setValue(value);
-        }
-      }
-      
-      updatedCount++;
-    } else {
-      // New player - append row
-      const newRow = new Array(headers.length).fill('');
-      newRow[colMap['PreferredName']] = playerId;
-      
-      for (const [missionName, value] of Object.entries(awards)) {
-        if (colMap[missionName] !== undefined) {
-          newRow[colMap[missionName]] = value;
-        }
-      }
-      
-      sheet.appendRow(newRow);
-      updatedCount++;
+    if (!sheet) {
+      throw new Error('Attendance_Missions sheet not found');
     }
+    
+    // Scan all events
+    Logger.log('Scanning event tabs...');
+    const { events, playerEvents } = scanAllEvents();
+    Logger.log('Found ' + events.length + ' events, ' + playerEvents.size + ' players');
+    
+    // Get current sheet data
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    // Build column map
+    const colMap = {};
+    for (let i = 0; i < headers.length; i++) {
+      colMap[headers[i]] = i;
+    }
+    
+    // Verify required columns exist
+    const requiredCols = [
+      'PreferredName', 'First Contact', 'Stellar Explorer', 'Deck Diver',
+      'Lunar Loyalty', 'Meteor Shower', 'Sealed Voyager', 'Draft Navigator',
+      'Stellar Scholar', 'Interstellar Strategist', 'Black Hole Survivor',
+      'Free Play Events', 'Points'
+    ];
+    
+    for (const col of requiredCols) {
+      if (colMap[col] === undefined) {
+        throw new Error('Missing required column: ' + col);
+      }
+    }
+    
+    // Build existing rows map
+    const existingRows = new Map();
+    for (let i = 1; i < data.length; i++) {
+      const name = String(data[i][colMap['PreferredName']] || '').trim();
+      if (name) {
+        existingRows.set(name, i + 1); // 1-based row number
+      }
+    }
+    
+    let updatedCount = 0;
+    
+    // Process each player
+    for (const [playerId, eventList] of playerEvents) {
+      const stats = computePlayerStats(playerId, eventList);
+      const awards = computeAttendanceMissionPoints(stats);
+      
+      if (existingRows.has(playerId)) {
+        // Update existing row
+        const rowNum = existingRows.get(playerId);
+        
+        for (const [missionName, value] of Object.entries(awards)) {
+          if (colMap[missionName] !== undefined) {
+            sheet.getRange(rowNum, colMap[missionName] + 1).setValue(value);
+          }
+        }
+        
+        updatedCount++;
+      } else {
+        // New player - append row
+        const newRow = new Array(headers.length).fill('');
+        newRow[colMap['PreferredName']] = playerId;
+        
+        for (const [missionName, value] of Object.entries(awards)) {
+          if (colMap[missionName] !== undefined) {
+            newRow[colMap[missionName]] = value;
+          }
+        }
+        
+        sheet.appendRow(newRow);
+        updatedCount++;
+      }
+    }
+    
+    Logger.log('Updated ' + updatedCount + ' players in Attendance_Missions');
+    
+    // Log success to Integrity_Log if available
+    if (typeof logIntegrityAction === 'function') {
+      logIntegrityAction('ATTENDANCE_MISSIONS_SYNC', {
+        details: 'Scanned ' + events.length + ' events, updated ' + updatedCount + ' players',
+        status: 'SUCCESS'
+      });
+    }
+    
+    return updatedCount;
+    
+  } catch (error) {
+    // Log error to Integrity_Log if available
+    Logger.log('Error in syncAttendanceMissions: ' + error.message);
+    
+    if (typeof logIntegrityAction === 'function') {
+      logIntegrityAction('ATTENDANCE_MISSIONS_SYNC', {
+        details: 'Error: ' + error.message + '\n\nStack: ' + (error.stack || 'N/A'),
+        status: 'FAILURE'
+      });
+    }
+    
+    throw error; // Re-throw to let caller handle
   }
-  
-  Logger.log('Updated ' + updatedCount + ' players in Attendance_Missions');
-  
-  // Log to Integrity_Log if available
-  if (typeof logIntegrityAction === 'function') {
-    logIntegrityAction('ATTENDANCE_MISSIONS_SYNC', {
-      details: 'Scanned ' + events.length + ' events, updated ' + updatedCount + ' players',
-      status: 'SUCCESS'
-    });
-  }
-  
-  return updatedCount;
 }
 
 /**
