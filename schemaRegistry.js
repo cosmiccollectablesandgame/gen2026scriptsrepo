@@ -150,7 +150,7 @@ const SCHEMA_REGISTRY = {
       'Flag Mission Points',
       'Dice Roll Points',
       'LastUpdated',
-      'BP_Historical'
+      'BP_Historical'  // Note: MegaBootstrap uses 'BP_Historical', not 'Historical_BP' from BP_HEADERS
     ],
     keyColumn: 'PreferredName',
     required: true
