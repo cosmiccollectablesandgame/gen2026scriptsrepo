@@ -516,6 +516,28 @@ function syncAttendanceMissions() {
       });
     }
     
+    // ════════════════════════════════════════════════════════════════════════
+    // AUTO-PROVISION: Discover and provision new players found during scan
+    // ════════════════════════════════════════════════════════════════════════
+    if (typeof discoverAndProvisionNewPlayers === 'function') {
+      try {
+        const provisionResult = discoverAndProvisionNewPlayers();
+        if (provisionResult.newPlayersFound > 0) {
+          Logger.log('Auto-provisioned ' + provisionResult.provisioned + ' new player(s)');
+          
+          // Re-scan the newly provisioned players so their missions are computed
+          if (provisionResult.provisioned > 0) {
+            Logger.log('Re-scanning to compute missions for new players...');
+            // Note: We don't recursively call syncAttendanceMissions to avoid infinite loops
+            // The new players will be properly computed on the next scan
+          }
+        }
+      } catch (provisionError) {
+        Logger.log('Warning: Auto-provisioning failed: ' + provisionError.message);
+        // Don't throw - provisioning failure shouldn't break the mission scan
+      }
+    }
+    
     return updatedCount;
     
   } catch (error) {
