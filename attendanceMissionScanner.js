@@ -374,7 +374,8 @@ function computePlayerStats(playerId, playerEventList) {
  * @return {Object} Mission awards + total
  */
 function computeAttendanceMissionPoints(stats) {
-  const awards = {
+  // Mission columns that count toward Points total
+  const missionColumns = {
     // One-time missions
     'First Contact': stats.totalEvents >= 1 ? 1 : 0,           // ATT-001
     'Stellar Explorer': stats.totalEvents >= 5 ? 2 : 0,        // ATT-002
@@ -388,9 +389,11 @@ function computeAttendanceMissionPoints(stats) {
     'Meteor Shower': stats.meteorWeeks,                        // ATT-008
     'Interstellar Strategist': stats.top4Finishes,             // ATT-009
     'Free Play Events': stats.freePlayEvents,                  // ATT-010
-    'Black Hole Survivor': stats.lastPlaceFinishes,            // ATT-011
-    
-    // Phase 5: Category columns
+    'Black Hole Survivor': stats.lastPlaceFinishes             // ATT-011
+  };
+  
+  // Category tracking columns (do NOT count toward Points)
+  const categoryColumns = {
     'Casual Commander Events': stats.casualCommanderEvents,
     'Transitional Commander Events': stats.transitionalCommanderEvents,
     'cEDH Events': stats.cedhEvents,
@@ -399,10 +402,13 @@ function computeAttendanceMissionPoints(stats) {
     'Outreach Events': stats.outreachEvents
   };
   
-  // Sum total
+  // Combine all awards
+  const awards = { ...missionColumns, ...categoryColumns };
+  
+  // Calculate Points total from mission columns only
   let total = 0;
-  for (const key in awards) {
-    total += awards[key];
+  for (const key in missionColumns) {
+    total += missionColumns[key];
   }
   awards['Points'] = total;
   
