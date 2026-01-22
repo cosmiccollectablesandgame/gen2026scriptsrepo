@@ -1,33 +1,20 @@
 /**
- * BP Total Pipeline Service v7.9.7
+ * BP Total Pipeline Service v8.0.0
  * @fileoverview CANONICAL pipeline for synchronizing BP_Total from source sheets:
  *   - Attendance_Missions (Attendance Mission Points)
  *   - Flag_Missions (Flag Mission Points)
  *   - Dice Roll Points (Dice Roll Points)
  *
- * AUTHORITATIVE BP_Total SCHEMA:
- *   PreferredName | Current_BP | Attendance Mission Points | Flag Mission Points | Dice Roll Points | LastUpdated | BP_Historical
+ * AUTHORITATIVE BP_Total SCHEMA (v8.0.0):
+ *   PreferredName | Current_BP | Historical_BP | Redeemed_Total | Prestige_BP |
+ *   Attendance Mission Points | Flag Mission Points | Dice Roll Points | 
+ *   Manual_Adjustment_Points | LastUpdated
  *
- * This is the ONLY file that should write to the mission columns in BP_Total.
+ * This is the ONLY file that should write to the BP_Total state columns.
+ * 
+ * DEPENDENCIES:
+ *   - bpHeaderResolver.js (BP_HEADERS, resolveHeaderIndex)
  */
-
-// ============================================================================
-// AUTHORITATIVE SCHEMA CONSTANTS
-// ============================================================================
-
-/**
- * Required headers for BP_Total (authoritative schema)
- * @const {Array<string>}
- */
-const BP_TOTAL_REQUIRED_HEADERS = [
-  'PreferredName',
-  'Current_BP',
-  'Attendance Mission Points',
-  'Flag Mission Points',
-  'Dice Roll Points',
-  'LastUpdated',
-  'BP_Historical'
-];
 
 // ============================================================================
 // MAIN PIPELINE: updateBPTotalFromSources
@@ -83,20 +70,25 @@ function updateBPTotalFromSources() {
   const bpData = bpSheet.getDataRange().getValues();
   const headers = bpData[0];
 
-  // Build column map
-  const colMap = mapColumns_(headers, BP_TOTAL_REQUIRED_HEADERS);
-
-  // Validate we have all required columns
-  const missingCols = BP_TOTAL_REQUIRED_HEADERS.filter(h => colMap[h] === undefined);
-  if (missingCols.length > 0) {
-    console.error('BP_Total missing columns:', missingCols.join(', '));
+  // Use header resolver for column mapping
+  const colMap = {};
+  try {
+    colMap[BP_HEADERS.PREFERRED_NAME] = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME);
+    colMap[BP_HEADERS.CURRENT_BP] = resolveHeaderIndex(headers, BP_HEADERS.CURRENT_BP);
+    colMap[BP_HEADERS.ATTENDANCE_POINTS] = resolveHeaderIndex(headers, BP_HEADERS.ATTENDANCE_POINTS);
+    colMap[BP_HEADERS.FLAG_POINTS] = resolveHeaderIndex(headers, BP_HEADERS.FLAG_POINTS);
+    colMap[BP_HEADERS.DICE_POINTS] = resolveHeaderIndex(headers, BP_HEADERS.DICE_POINTS);
+    colMap[BP_HEADERS.LAST_UPDATED] = resolveHeaderIndex(headers, BP_HEADERS.LAST_UPDATED);
+    colMap[BP_HEADERS.HISTORICAL_BP] = resolveHeaderIndex(headers, BP_HEADERS.HISTORICAL_BP);
+  } catch (e) {
+    console.error('BP_Total schema validation failed:', e.message);
     return 0;
   }
 
   // Build map of existing BP_Total rows by PreferredName
   const existingRows = new Map();
   for (let i = 1; i < bpData.length; i++) {
-    const name = String(bpData[i][colMap['PreferredName']] || '').trim();
+    const name = String(bpData[i][colMap[BP_HEADERS.PREFERRED_NAME]] || '').trim();
     if (name) {
       existingRows.set(name, i); // Row index in data array (0-based)
     }
@@ -121,10 +113,10 @@ function updateBPTotalFromSources() {
       const rowNum = rowIdx + 1; // 1-based for sheet
 
       // Get current values
-      const oldAttendance = coerceNumber(bpData[rowIdx][colMap['Attendance Mission Points']], 0);
-      const oldFlag = coerceNumber(bpData[rowIdx][colMap['Flag Mission Points']], 0);
-      const oldDice = coerceNumber(bpData[rowIdx][colMap['Dice Roll Points']], 0);
-      const currentHistorical = coerceNumber(bpData[rowIdx][colMap['BP_Historical']], 0);
+      const oldAttendance = coerceNumber(bpData[rowIdx][colMap[BP_HEADERS.ATTENDANCE_POINTS]], 0);
+      const oldFlag = coerceNumber(bpData[rowIdx][colMap[BP_HEADERS.FLAG_POINTS]], 0);
+      const oldDice = coerceNumber(bpData[rowIdx][colMap[BP_HEADERS.DICE_POINTS]], 0);
+      const currentHistorical = coerceNumber(bpData[rowIdx][colMap[BP_HEADERS.HISTORICAL_BP]], 0);
 
       // Check if anything changed
       const hasChanges = (
@@ -138,25 +130,25 @@ function updateBPTotalFromSources() {
         const newHistorical = Math.max(currentHistorical, totalFromSources);
 
         // Write updates
-        bpSheet.getRange(rowNum, colMap['Attendance Mission Points'] + 1).setValue(attPoints);
-        bpSheet.getRange(rowNum, colMap['Flag Mission Points'] + 1).setValue(flagPts);
-        bpSheet.getRange(rowNum, colMap['Dice Roll Points'] + 1).setValue(dicePts);
-        bpSheet.getRange(rowNum, colMap['Current_BP'] + 1).setValue(newCurrentBP);
-        bpSheet.getRange(rowNum, colMap['BP_Historical'] + 1).setValue(newHistorical);
-        bpSheet.getRange(rowNum, colMap['LastUpdated'] + 1).setValue(now);
+        bpSheet.getRange(rowNum, colMap[BP_HEADERS.ATTENDANCE_POINTS] + 1).setValue(attPoints);
+        bpSheet.getRange(rowNum, colMap[BP_HEADERS.FLAG_POINTS] + 1).setValue(flagPts);
+        bpSheet.getRange(rowNum, colMap[BP_HEADERS.DICE_POINTS] + 1).setValue(dicePts);
+        bpSheet.getRange(rowNum, colMap[BP_HEADERS.CURRENT_BP] + 1).setValue(newCurrentBP);
+        bpSheet.getRange(rowNum, colMap[BP_HEADERS.HISTORICAL_BP] + 1).setValue(newHistorical);
+        bpSheet.getRange(rowNum, colMap[BP_HEADERS.LAST_UPDATED] + 1).setValue(now);
 
         updatedCount++;
       }
     } else {
       // New player - prepare row for batch append
       const newRow = new Array(headers.length).fill('');
-      newRow[colMap['PreferredName']] = playerName;
-      newRow[colMap['Current_BP']] = newCurrentBP;
-      newRow[colMap['Attendance Mission Points']] = attPoints;
-      newRow[colMap['Flag Mission Points']] = flagPts;
-      newRow[colMap['Dice Roll Points']] = dicePts;
-      newRow[colMap['LastUpdated']] = now;
-      newRow[colMap['BP_Historical']] = totalFromSources;
+      newRow[colMap[BP_HEADERS.PREFERRED_NAME]] = playerName;
+      newRow[colMap[BP_HEADERS.CURRENT_BP]] = newCurrentBP;
+      newRow[colMap[BP_HEADERS.ATTENDANCE_POINTS]] = attPoints;
+      newRow[colMap[BP_HEADERS.FLAG_POINTS]] = flagPts;
+      newRow[colMap[BP_HEADERS.DICE_POINTS]] = dicePts;
+      newRow[colMap[BP_HEADERS.LAST_UPDATED]] = now;
+      newRow[colMap[BP_HEADERS.HISTORICAL_BP]] = totalFromSources;
 
       newRows.push(newRow);
       updatedCount++;
@@ -200,29 +192,13 @@ function getAttendanceMissionPoints_() {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  // Find name column
-  const nameCol = headers.indexOf('PreferredName');
-  if (nameCol === -1) {
-    console.warn('Attendance_Missions: PreferredName column not found');
-    return new Map();
-  }
-
-  // Find points column - try multiple names for compatibility
-  const pointsColNames = [
-    'Attendance Mission Points',
-    'Attendance Points',
-    'Points',
-    'Total Points'
-  ];
-
-  let pointsCol = -1;
-  for (const colName of pointsColNames) {
-    pointsCol = headers.indexOf(colName);
-    if (pointsCol !== -1) break;
-  }
-
-  if (pointsCol === -1) {
-    console.warn('Attendance_Missions: Points column not found');
+  // Use header resolver
+  let nameCol, pointsCol;
+  try {
+    nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME);
+    pointsCol = resolveHeaderIndex(headers, BP_HEADERS.ATTENDANCE_POINTS);
+  } catch (e) {
+    console.warn('Attendance_Missions schema issue:', e.message);
     return new Map();
   }
 
@@ -254,29 +230,13 @@ function getFlagMissionPoints_() {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  // Find name column
-  const nameCol = headers.indexOf('PreferredName');
-  if (nameCol === -1) {
-    console.warn('Flag_Missions: PreferredName column not found');
-    return new Map();
-  }
-
-  // Find points column - try multiple names for compatibility
-  const pointsColNames = [
-    'Flag Mission Points',
-    'Flag Points',
-    'Points',
-    'Total Points'
-  ];
-
-  let pointsCol = -1;
-  for (const colName of pointsColNames) {
-    pointsCol = headers.indexOf(colName);
-    if (pointsCol !== -1) break;
-  }
-
-  if (pointsCol === -1) {
-    console.warn('Flag_Missions: Points column not found');
+  // Use header resolver
+  let nameCol, pointsCol;
+  try {
+    nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME);
+    pointsCol = resolveHeaderIndex(headers, BP_HEADERS.FLAG_POINTS);
+  } catch (e) {
+    console.warn('Flag_Missions schema issue:', e.message);
     return new Map();
   }
 
@@ -313,29 +273,13 @@ function getDiceRollPoints_() {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  // Find name column
-  const nameCol = headers.indexOf('PreferredName');
-  if (nameCol === -1) {
-    console.warn('Dice Roll Points: PreferredName column not found');
-    return new Map();
-  }
-
-  // Find points column - try multiple names for compatibility
-  const pointsColNames = [
-    'Dice Roll Points',
-    'Dice Points',
-    'Points',
-    'Total Points'
-  ];
-
-  let pointsCol = -1;
-  for (const colName of pointsColNames) {
-    pointsCol = headers.indexOf(colName);
-    if (pointsCol !== -1) break;
-  }
-
-  if (pointsCol === -1) {
-    console.warn('Dice Roll Points: Points column not found');
+  // Use header resolver
+  let nameCol, pointsCol;
+  try {
+    nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME);
+    pointsCol = resolveHeaderIndex(headers, BP_HEADERS.DICE_POINTS);
+  } catch (e) {
+    console.warn('Dice Roll Points schema issue:', e.message);
     return new Map();
   }
 
@@ -365,26 +309,28 @@ function ensureBPTotalSchemaEnhanced_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('BP_Total');
 
+  const requiredHeaders = getBPTotalRequiredHeaders();
+
   if (!sheet) {
     // Create new sheet with full schema
     sheet = ss.insertSheet('BP_Total');
-    sheet.appendRow(BP_TOTAL_REQUIRED_HEADERS);
+    sheet.appendRow(requiredHeaders);
     sheet.setFrozenRows(1);
-    formatHeaderRow_(sheet, BP_TOTAL_REQUIRED_HEADERS.length);
+    formatHeaderRow_(sheet, requiredHeaders.length);
     return;
   }
 
   if (sheet.getLastRow() === 0) {
     // Empty sheet - add headers
-    sheet.appendRow(BP_TOTAL_REQUIRED_HEADERS);
+    sheet.appendRow(requiredHeaders);
     sheet.setFrozenRows(1);
-    formatHeaderRow_(sheet, BP_TOTAL_REQUIRED_HEADERS.length);
+    formatHeaderRow_(sheet, requiredHeaders.length);
     return;
   }
 
   // Check existing headers and add missing ones
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const missing = BP_TOTAL_REQUIRED_HEADERS.filter(h => !headers.includes(h));
+  const missing = requiredHeaders.filter(h => !headers.includes(h));
 
   if (missing.length > 0) {
     const startCol = headers.length + 1;
@@ -394,24 +340,6 @@ function ensureBPTotalSchemaEnhanced_() {
 
     console.log('Added missing BP_Total columns:', missing.join(', '));
   }
-}
-
-/**
- * Maps column names to their 0-based indices
- * @param {Array<string>} headers - Header row
- * @param {Array<string>} requiredHeaders - Headers to map
- * @return {Object} Map of header name -> column index
- * @private
- */
-function mapColumns_(headers, requiredHeaders) {
-  const colMap = {};
-  requiredHeaders.forEach(header => {
-    const idx = headers.indexOf(header);
-    if (idx !== -1) {
-      colMap[header] = idx;
-    }
-  });
-  return colMap;
 }
 
 /**
@@ -556,15 +484,16 @@ function validateMissionPointsIntegrity() {
     });
   } else if (bpSheet.getLastRow() > 0) {
     const headers = bpSheet.getRange(1, 1, 1, bpSheet.getLastColumn()).getValues()[0];
-
-    BP_TOTAL_REQUIRED_HEADERS.forEach(required => {
-      if (!headers.includes(required)) {
-        issues.push({
-          sheet: 'BP_Total',
-          row: 1,
-          issue: `Missing column: ${required}`
-        });
-      }
+    
+    // Use header resolver validation
+    const validation = validateBPTotalHeaders(headers);
+    
+    validation.missing.forEach(missing => {
+      issues.push({
+        sheet: 'BP_Total',
+        row: 1,
+        issue: `Missing column: ${missing}`
+      });
     });
   }
 

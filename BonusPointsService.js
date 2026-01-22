@@ -189,18 +189,15 @@ function getPlayerBPBalance(preferredName) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const nameCol = headers.indexOf('PreferredName');
-  const currentCol =
-  headers.indexOf('BP_Current') >= 0
-    ? headers.indexOf('BP_Current')
-    : headers.indexOf('Current_BP');
-
-const historicalCol =
-  headers.indexOf('BP_Historical') >= 0
-    ? headers.indexOf('BP_Historical')
-    : headers.indexOf('Historical_BP');
-
-  if (nameCol === -1 || currentCol === -1) {
+  
+  // Use header resolver
+  let nameCol, currentCol, historicalCol;
+  try {
+    nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME);
+    currentCol = resolveHeaderIndex(headers, BP_HEADERS.CURRENT_BP);
+    historicalCol = resolveHeaderIndex(headers, BP_HEADERS.HISTORICAL_BP, false); // optional
+  } catch (e) {
+    console.error('BP_Total schema issue in getPlayerBPBalance:', e.message);
     return { currentBP: 0, historicalBP: 0, prestige: 0 };
   }
 
@@ -233,8 +230,20 @@ function getPlayerPrestige_(preferredName) {
   if (data.length === 0) return 0;
 
   const headers = data[0];
-  const nameCol = headers.indexOf('PreferredName') >= 0 ? headers.indexOf('PreferredName') : 0;
-  const prestigeCol = headers.indexOf('Prestige_Points') >= 0 ? headers.indexOf('Prestige_Points') : 1;
+  
+  // Use header resolver with defaults for legacy schema
+  let nameCol, prestigeCol;
+  try {
+    nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME, false);
+    prestigeCol = resolveHeaderIndex(headers, BP_HEADERS.PRESTIGE_BP, false);
+  } catch (e) {
+    // Fallback to defaults if resolver fails
+    nameCol = 0;
+    prestigeCol = 1;
+  }
+  
+  if (nameCol === -1) nameCol = 0;
+  if (prestigeCol === -1) prestigeCol = 1;
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][nameCol] === preferredName) {
@@ -274,21 +283,16 @@ function setPlayerBP_(preferredName, newAmount, deltaHistorical = 0) {
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
-  const nameCol = headers.indexOf('PreferredName');
- const currentCol =
-  headers.indexOf('BP_Current') >= 0
-    ? headers.indexOf('BP_Current')
-    : headers.indexOf('Current_BP');
-
-const historicalCol =
-  headers.indexOf('BP_Historical') >= 0
-    ? headers.indexOf('BP_Historical')
-    : headers.indexOf('Historical_BP');
-
-  const updatedCol = headers.indexOf('LastUpdated');
-
-  if (nameCol === -1 || currentCol === -1) {
-    throwError('Invalid BP_Total schema', 'SCHEMA_INVALID');
+  
+  // Use header resolver
+  let nameCol, currentCol, historicalCol, updatedCol;
+  try {
+    nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME);
+    currentCol = resolveHeaderIndex(headers, BP_HEADERS.CURRENT_BP);
+    historicalCol = resolveHeaderIndex(headers, BP_HEADERS.HISTORICAL_BP, false);
+    updatedCol = resolveHeaderIndex(headers, BP_HEADERS.LAST_UPDATED, false);
+  } catch (e) {
+    throwError('Invalid BP_Total schema: ' + e.message, 'SCHEMA_INVALID');
   }
 
   // Find or create player row
@@ -581,13 +585,26 @@ function updateRedeemedBPLedger_(preferredName, amount, itemRedeemed, notes, bpC
   const data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
   const headers = data[0];
 
-  const nameCol       = headers.indexOf('PreferredName');
-  const totalCol      = headers.indexOf('Total_Redeemed');
-  const itemCol       = headers.indexOf('Item_Redeemed');
-  const notesCol      = headers.indexOf('Notes');
-  const bpCurrentCol  = headers.indexOf('BP_Current');
-  const bpHistCol     = headers.indexOf('BP_Historical');
-  const updatedCol    = headers.indexOf('LastUpdated');
+  // Use header resolver with optional fallback (Redeemed_BP has legacy schema)
+  let nameCol, totalCol, itemCol, notesCol, bpCurrentCol, bpHistCol, updatedCol;
+  try {
+    nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME, false);
+    totalCol = resolveHeaderIndex(headers, BP_HEADERS.REDEEMED_TOTAL, false);
+    bpCurrentCol = resolveHeaderIndex(headers, BP_HEADERS.CURRENT_BP, false);
+    bpHistCol = resolveHeaderIndex(headers, BP_HEADERS.HISTORICAL_BP, false);
+    updatedCol = resolveHeaderIndex(headers, BP_HEADERS.LAST_UPDATED, false);
+  } catch (e) {
+    console.warn('Redeemed_BP schema issue, using fallback:', e.message);
+  }
+  
+  // Fallback to indexOf for Redeemed_BP specific columns
+  if (nameCol === -1) nameCol = headers.indexOf('PreferredName');
+  if (totalCol === -1) totalCol = headers.indexOf('Total_Redeemed');
+  itemCol = headers.indexOf('Item_Redeemed');
+  notesCol = headers.indexOf('Notes');
+  if (bpCurrentCol === -1) bpCurrentCol = headers.indexOf('BP_Current');
+  if (bpHistCol === -1) bpHistCol = headers.indexOf('BP_Historical');
+  if (updatedCol === -1) updatedCol = headers.indexOf('LastUpdated');
 
   // Compute existing lifetime redeemed total for this player
   let currentLifetimeTotal = 0;
@@ -633,15 +650,20 @@ function syncBPTotalRedeemed_(preferredName, bpCurrent, bpRedeemedLifetime) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
-  const nameCol = headers.indexOf('PreferredName');
-  const currentCol =
-    headers.indexOf('BP_Current') >= 0
-      ? headers.indexOf('BP_Current')
-      : headers.indexOf('Current_BP');
-  const redeemedCol = headers.indexOf('BP_Redeemed');
-  const updatedCol = headers.indexOf('LastUpdated');
-
-  if (nameCol === -1) return;
+  // Use header resolver
+  let nameCol, currentCol, redeemedCol, updatedCol;
+  try {
+    nameCol = resolveHeaderIndex(headers, BP_HEADERS.PREFERRED_NAME);
+    currentCol = resolveHeaderIndex(headers, BP_HEADERS.CURRENT_BP);
+    redeemedCol = resolveHeaderIndex(headers, BP_HEADERS.REDEEMED_TOTAL, false); // optional for now
+    updatedCol = resolveHeaderIndex(headers, BP_HEADERS.LAST_UPDATED, false);
+  } catch (e) {
+    console.warn('BP_Total schema issue in syncBPTotalRedeemed_:', e.message);
+    return;
+  }
+  
+  // Fallback for legacy BP_Redeemed column
+  if (redeemedCol === -1) redeemedCol = headers.indexOf('BP_Redeemed');
 
   // Find player row
   let playerRow = -1;
