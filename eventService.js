@@ -168,6 +168,14 @@ function smartParseRoster(text) {
   const lines = text.trim().split(/\r?\n/);
   const players = [];
   
+  // WER smushed format regex pattern
+  // Captures: (rank)(name)(points)(W/L/D record)
+  // Group 1: 1-2 digit rank (e.g., "1", "14")
+  // Group 2: Player name with letters, spaces, apostrophes, hyphens (e.g., "Cy Diskin", "O'Brien")
+  // Group 3: 1 digit points (e.g., "9")
+  // Group 4: W/L/D record format (e.g., "3/0/0")
+  const WER_SMUSHED_PATTERN = /^(\d{1,2})([A-Za-z][A-Za-z '\-]+[A-Za-z])(\d)(\d\/\d\/\d)/;
+  
   for (let raw of lines) {
     let s = (raw || "").trim();
     
@@ -177,7 +185,7 @@ function smartParseRoster(text) {
     // EARLY DETECTION: WER smushed format (no spaces between rank, name, points, record)
     // Pattern: {1-2 digit rank}{First Last}{1 digit points}{W/L/D record}{percentages}
     // Example: "1Cy Diskin93/0/055.6%100.0%55.6%"
-    const werSmushedMatch = s.match(/^(\d{1,2})([A-Za-z][A-Za-z ''-]+[A-Za-z])(\d)(\d\/\d\/\d)/);
+    const werSmushedMatch = s.match(WER_SMUSHED_PATTERN);
     if (werSmushedMatch) {
       const extractedName = werSmushedMatch[2].trim();
       if (extractedName) {
