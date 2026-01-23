@@ -174,6 +174,18 @@ function smartParseRoster(text) {
     // Skip empty lines
     if (!s) continue;
     
+    // EARLY DETECTION: WER smushed format (no spaces between rank, name, points, record)
+    // Pattern: {1-2 digit rank}{First Last}{1 digit points}{W/L/D record}{percentages}
+    // Example: "1Cy Diskin93/0/055.6%100.0%55.6%"
+    const werSmushedMatch = s.match(/^(\d{1,2})([A-Za-z][A-Za-z ''-]+[A-Za-z])(\d)(\d\/\d\/\d)/);
+    if (werSmushedMatch) {
+      const extractedName = werSmushedMatch[2].trim();
+      if (extractedName) {
+        players.push(properCase(extractedName));
+        continue;
+      }
+    }
+    
     // Skip lines with these keywords (contains, not exact match)
     const skipKeywords = ['eventlink', 'copyright', 'wizards', 'coast', 'report:', 
                           'event:', 'event date:', 'event information:', 'format:', 
