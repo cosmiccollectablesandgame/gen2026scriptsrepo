@@ -171,10 +171,11 @@ function smartParseRoster(text) {
   // WER smushed format regex pattern
   // Captures: (rank)(name)(points)(W/L/D record)
   // Group 1: 1-2 digit rank (e.g., "1", "14")
-  // Group 2: Player name with letters, spaces, apostrophes, hyphens (e.g., "Cy Diskin", "O'Brien")
+  // Group 2: Player name with letters, spaces, apostrophes, hyphens (e.g., "Cy Diskin", "O'Brien", "John")
   // Group 3: 1 digit points (e.g., "9")
   // Group 4: W/L/D record format (e.g., "3/0/0")
-  const WER_SMUSHED_PATTERN = /^(\d{1,2})([A-Za-z][A-Za-z '\-]+[A-Za-z])(\d)(\d\/\d\/\d)/;
+  // Note: Name pattern allows single word or multi-word names with spaces/apostrophes/hyphens
+  const WER_SMUSHED_PATTERN = /^(\d{1,2})([A-Za-z]+(?:[ '\-][A-Za-z]+)*)(\d)(\d\/\d\/\d)/;
   
   for (let raw of lines) {
     let s = (raw || "").trim();

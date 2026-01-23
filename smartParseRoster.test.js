@@ -162,6 +162,17 @@ function testWERSmushedFormat(results) {
     'WER Smushed Format - Proper casing applied',
     results
   );
+  
+  // Test case 7: Single word name
+  const input7 = "3Cher93/0/055.6%100.0%55.6%";
+  const result7 = smartParseRoster(input7);
+  const expected7 = ["Cher"];
+  
+  assert(
+    arraysEqual(result7, expected7),
+    'WER Smushed Format - Single word name',
+    results
+  );
 }
 
 /**
