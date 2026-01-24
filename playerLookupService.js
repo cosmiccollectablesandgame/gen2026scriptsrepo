@@ -649,23 +649,54 @@ function getStoreCreditInfo_(name, errors) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // Try Store_Credit sheet
-    const scSheet = ss.getSheetByName('Store_Credit');
+    // Phase 5: Use Store_Credit_Ledger (preferred) or fallback to Store_Credit
+    let scSheet = ss.getSheetByName('Store_Credit_Ledger');
     if (scSheet && scSheet.getLastRow() > 1) {
+      // Ledger format: scan for last RunningBalance for this player
       const data = scSheet.getDataRange().getValues();
       const headers = data[0];
-      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
-      const balanceCol = findColumnIndex_(headers, ['Balance', 'Credit', 'Amount']);
-      const updatedCol = findColumnIndex_(headers, ['LastUpdated', 'Last_Updated']);
+      const nameCol = findColumnIndex_(headers, ['PreferredName', 'preferred_name_id', 'Player', 'Customer', 'Name']);
+      const balanceCol = findColumnIndex_(headers, ['RunningBalance', 'Balance']);
+      const timestampCol = findColumnIndex_(headers, ['Timestamp', 'Date']);
+      const directionCol = findColumnIndex_(headers, ['InOut', 'Direction']);
+      const amountCol = findColumnIndex_(headers, ['Amount']);
 
       if (nameCol !== -1 && balanceCol !== -1) {
-        for (let i = 1; i < data.length; i++) {
+        // Scan from bottom up for last transaction
+        for (let i = data.length - 1; i >= 1; i--) {
           if (String(data[i][nameCol]).toLowerCase() === name.toLowerCase()) {
             result.balance = coerceNumber(data[i][balanceCol], 0);
-            if (updatedCol !== -1 && data[i][updatedCol]) {
-              result.lastUpdated = formatDateSafe_(data[i][updatedCol]);
+            if (timestampCol !== -1 && data[i][timestampCol]) {
+              result.lastUpdated = formatDateSafe_(data[i][timestampCol]);
+            }
+            if (directionCol !== -1 && amountCol !== -1) {
+              const direction = String(data[i][directionCol] || '');
+              const amount = coerceNumber(data[i][amountCol], 0);
+              result.lastTxSummary = `${direction} ${Math.abs(amount).toFixed(2)}`;
             }
             break;
+          }
+        }
+      }
+    } else {
+      // Fallback: Try Store_Credit sheet
+      scSheet = ss.getSheetByName('Store_Credit');
+      if (scSheet && scSheet.getLastRow() > 1) {
+        const data = scSheet.getDataRange().getValues();
+        const headers = data[0];
+        const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
+        const balanceCol = findColumnIndex_(headers, ['Balance', 'Credit', 'Amount']);
+        const updatedCol = findColumnIndex_(headers, ['LastUpdated', 'Last_Updated']);
+
+        if (nameCol !== -1 && balanceCol !== -1) {
+          for (let i = 1; i < data.length; i++) {
+            if (String(data[i][nameCol]).toLowerCase() === name.toLowerCase()) {
+              result.balance = coerceNumber(data[i][balanceCol], 0);
+              if (updatedCol !== -1 && data[i][updatedCol]) {
+                result.lastUpdated = formatDateSafe_(data[i][updatedCol]);
+              }
+              break;
+            }
           }
         }
       }
@@ -694,8 +725,12 @@ function getPreordersInfo_(name, errors) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // Try Preorders sheet
-    const preorderSheet = ss.getSheetByName('Preorders');
+    // Phase 5: Try Preorders_Sold first, then fallback to Preorders
+    let preorderSheet = ss.getSheetByName('Preorders_Sold');
+    if (!preorderSheet || preorderSheet.getLastRow() <= 1) {
+      preorderSheet = ss.getSheetByName('Preorders');
+    }
+    
     if (preorderSheet && preorderSheet.getLastRow() > 1) {
       const data = preorderSheet.getDataRange().getValues();
       const headers = data[0];
@@ -705,20 +740,27 @@ function getPreordersInfo_(name, errors) {
       const statusCol = findColumnIndex_(headers, ['Status', 'status']);
       const setCol = findColumnIndex_(headers, ['Set', 'SetName', 'Set_Name']);
       const priceCol = findColumnIndex_(headers, ['Price', 'Unit_Price']);
-      const paidCol = findColumnIndex_(headers, ['Paid', 'Paid_Amount']);
+      const paidCol = findColumnIndex_(headers, ['Paid', 'Paid_Amount', 'Deposit_Paid']);
+      const balanceCol = findColumnIndex_(headers, ['Balance_Due', 'BalanceDue', 'Balance']);
 
       if (nameCol !== -1) {
         for (let i = 1; i < data.length; i++) {
           if (String(data[i][nameCol]).toLowerCase() === name.toLowerCase()) {
             result.historyCount++;
 
-            const status = statusCol !== -1 ? String(data[i][statusCol] || 'Active') : 'Active';
-            const isActive = !['Completed', 'Cancelled', 'Picked Up'].includes(status);
+            const status = statusCol !== -1 ? String(data[i][statusCol] || 'Pending') : 'Pending';
+            const isActive = !['Completed', 'Cancelled', 'Picked Up', 'Fulfilled'].includes(status);
 
             if (isActive) {
               const unitPrice = priceCol !== -1 ? coerceNumber(data[i][priceCol], 0) : 0;
               const qty = qtyCol !== -1 ? coerceNumber(data[i][qtyCol], 1) : 1;
               const paid = paidCol !== -1 ? coerceNumber(data[i][paidCol], 0) : 0;
+              
+              // Phase 5: Use Balance_Due column if available, else calculate
+              let balanceDue = (unitPrice * qty) - paid;
+              if (balanceCol !== -1 && data[i][balanceCol] != null && data[i][balanceCol] !== '') {
+                balanceDue = coerceNumber(data[i][balanceCol], balanceDue);
+              }
 
               result.active.push({
                 rowIndex: i + 1,
@@ -727,7 +769,7 @@ function getPreordersInfo_(name, errors) {
                 qty: qty,
                 unitPrice: unitPrice,
                 paidAmount: paid,
-                balanceDue: (unitPrice * qty) - paid,
+                balanceDue: balanceDue,
                 status: status
               });
             }

@@ -51,6 +51,17 @@ function logStoreCreditTransaction(payload) {
     const preferredNameId = String(payload.preferred_name_id).trim();
     const lastBalance = getLastRunningBalance_(sheet, preferredNameId);
     const newBalance = lastBalance + signedAmount;
+    
+    // Phase 5: Queue unknown names (retail-friendly mode)
+    // Check if name is canonical, queue if not (but don't block transaction)
+    if (typeof queueUnknownName === 'function') {
+      try {
+        queueUnknownName(preferredNameId, 'STORE_CREDIT_LEDGER', STORE_CREDIT_SHEET_NAME, 'Transaction');
+      } catch (queueError) {
+        // Non-blocking: log but continue
+        console.warn('Failed to queue unknown name:', queueError);
+      }
+    }
 
     // Generate unique row ID and timestamp
     const rowId = Utilities.getUuid();
