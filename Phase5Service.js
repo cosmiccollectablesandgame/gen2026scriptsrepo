@@ -57,6 +57,26 @@ const RETIRED_SHEETS = [
   'Player\'s Prize-Wall-Points'
 ];
 
+/**
+ * Checks if a sheet is retired/legacy
+ * @param {string} sheetName - Sheet name to check
+ * @return {boolean} True if sheet is retired
+ */
+function isRetiredSheet(sheetName) {
+  if (!sheetName) return false;
+  const normalizedName = String(sheetName).trim().toLowerCase();
+  return RETIRED_SHEETS.some(retired => retired.toLowerCase() === normalizedName);
+}
+
+/**
+ * Gets list of active (non-retired) sheet names
+ * @param {Array<string>} sheetNames - Array of sheet names to filter
+ * @return {Array<string>} Filtered sheet names (active only)
+ */
+function filterRetiredSheets(sheetNames) {
+  return sheetNames.filter(name => !isRetiredSheet(name));
+}
+
 // ============================================================================
 // CORE NORMALIZATION FUNCTION
 // ============================================================================
@@ -1395,4 +1415,285 @@ function findCanonicalNameFor(rawName) {
     suggestions: suggestions.slice(0, 5),
     needsResolution: true
   };
+}
+
+// ============================================================================
+// AUDITING AND REPORTING
+// ============================================================================
+
+/**
+ * Generates a Phase 5 Truth Consumers Audit Report
+ * Shows status of all identity-dependent systems
+ * 
+ * @return {Object} Audit report with status of all consumers
+ */
+function generatePhase5AuditReport() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const report = {
+      timestamp: new Date().toISOString(),
+      canonicalNames: { count: 0, source: 'PreferredNames' },
+      undiscoveredNames: { total: 0, open: 0, resolved: 0 },
+      transactionalConsumers: {},
+      derivedConsumers: {},
+      retiredSheets: [],
+      errors: []
+    };
+    
+    // Check PreferredNames
+    const prefSheet = ss.getSheetByName('PreferredNames');
+    if (prefSheet && prefSheet.getLastRow() > 1) {
+      report.canonicalNames.count = prefSheet.getLastRow() - 1;
+      report.canonicalNames.exists = true;
+    } else {
+      report.errors.push('PreferredNames sheet not found or empty');
+    }
+    
+    // Check UndiscoveredNames
+    const undiscSheet = ss.getSheetByName('UndiscoveredNames');
+    if (undiscSheet && undiscSheet.getLastRow() > 1) {
+      const data = undiscSheet.getDataRange().getValues();
+      const headers = data[0];
+      const statusIdx = headers.indexOf('Status') !== -1 ? headers.indexOf('Status') : 8;
+      
+      report.undiscoveredNames.total = data.length - 1;
+      
+      for (let i = 1; i < data.length; i++) {
+        const status = String(data[i][statusIdx] || 'OPEN').toUpperCase();
+        if (status === 'OPEN') {
+          report.undiscoveredNames.open++;
+        } else if (status === 'RESOLVED') {
+          report.undiscoveredNames.resolved++;
+        }
+      }
+    }
+    
+    // Check Store_Credit_Ledger
+    const ledgerSheet = ss.getSheetByName('Store_Credit_Ledger');
+    if (ledgerSheet) {
+      const ledgerStatus = getSheetHygieneStatus('Store_Credit_Ledger');
+      report.transactionalConsumers.storeCreditLedger = {
+        exists: true,
+        rowCount: ledgerSheet.getLastRow() - 1,
+        clean: ledgerStatus.clean,
+        lastChecked: ledgerStatus.lastChecked,
+        enforcementMode: 'RETAIL_FRIENDLY',
+        allowsUnknownNames: true
+      };
+    } else {
+      report.transactionalConsumers.storeCreditLedger = {
+        exists: false,
+        message: 'Store_Credit_Ledger not found'
+      };
+    }
+    
+    // Check Preorders
+    const preordersSheet = ss.getSheetByName('Preorders_Sold') || ss.getSheetByName('Preorders');
+    if (preordersSheet) {
+      const preordersStatus = getSheetHygieneStatus('Preorders');
+      report.transactionalConsumers.preorders = {
+        exists: true,
+        sheetName: preordersSheet.getName(),
+        rowCount: preordersSheet.getLastRow() - 1,
+        clean: preordersStatus.clean,
+        lastChecked: preordersStatus.lastChecked,
+        enforcementMode: 'STRICT',
+        allowsUnknownNames: false
+      };
+    } else {
+      report.transactionalConsumers.preorders = {
+        exists: false,
+        message: 'Preorders sheet not found'
+      };
+    }
+    
+    // Check PlayerLookup
+    const lookupSheet = ss.getSheetByName('PlayerLookup');
+    if (lookupSheet) {
+      report.derivedConsumers.playerLookup = {
+        exists: true,
+        rowCount: lookupSheet.getLastRow() - 1,
+        lastBuilt: lookupSheet.getLastRow() > 1 ? 'Has data' : 'Empty'
+      };
+    } else {
+      report.derivedConsumers.playerLookup = {
+        exists: false,
+        message: 'PlayerLookup not found - run SAFE_RUN_PLAYERLOOKUP_BUILD()'
+      };
+    }
+    
+    // Check MissionLog (if exists)
+    const missionLogSheet = ss.getSheetByName('MissionLog');
+    if (missionLogSheet) {
+      report.derivedConsumers.missionLog = {
+        exists: true,
+        rowCount: missionLogSheet.getLastRow() - 1
+      };
+    }
+    
+    // Check Provisional_Ledger_Names
+    const provisionalSheet = ss.getSheetByName('Provisional_Ledger_Names');
+    if (provisionalSheet) {
+      report.derivedConsumers.provisionalLedgerNames = {
+        exists: true,
+        rowCount: provisionalSheet.getLastRow() - 1
+      };
+    }
+    
+    // Check Resolve_Unknowns_Dashboard
+    const dashboardSheet = ss.getSheetByName('Resolve_Unknowns_Dashboard');
+    if (dashboardSheet) {
+      report.derivedConsumers.resolveUnknownsDashboard = {
+        exists: true,
+        rowCount: dashboardSheet.getLastRow() - 1
+      };
+    }
+    
+    // Check retired sheets
+    RETIRED_SHEETS.forEach(sheetName => {
+      const sheet = ss.getSheetByName(sheetName);
+      if (sheet) {
+        report.retiredSheets.push({
+          name: sheetName,
+          exists: true,
+          rowCount: sheet.getLastRow() - 1,
+          status: 'LEGACY - Read Only'
+        });
+      }
+    });
+    
+    return report;
+    
+  } catch (e) {
+    console.error('generatePhase5AuditReport error:', e);
+    return {
+      success: false,
+      error: e.message
+    };
+  }
+}
+
+/**
+ * Generates and logs a human-readable Phase 5 audit report
+ * Can be called from menu or manually
+ * 
+ * @return {string} Formatted report text
+ */
+function GENERATE_PHASE5_AUDIT_REPORT() {
+  const report = generatePhase5AuditReport();
+  
+  const lines = [];
+  lines.push('═══════════════════════════════════════════════════════════');
+  lines.push('PHASE 5 TRUTH CONSUMERS AUDIT REPORT');
+  lines.push('═══════════════════════════════════════════════════════════');
+  lines.push('');
+  lines.push(`Timestamp: ${report.timestamp}`);
+  lines.push('');
+  
+  // Canonical Names
+  lines.push('─── CANONICAL NAMES (PreferredNames) ───');
+  lines.push(`  Count: ${report.canonicalNames.count}`);
+  lines.push(`  Exists: ${report.canonicalNames.exists || false}`);
+  lines.push('');
+  
+  // Undiscovered Names
+  lines.push('─── UNDISCOVERED NAMES (Identity Queue) ───');
+  lines.push(`  Total: ${report.undiscoveredNames.total}`);
+  lines.push(`  Open: ${report.undiscoveredNames.open}`);
+  lines.push(`  Resolved: ${report.undiscoveredNames.resolved}`);
+  lines.push('');
+  
+  // Transactional Consumers
+  lines.push('─── TRANSACTIONAL TRUTH CONSUMERS ───');
+  
+  if (report.transactionalConsumers.storeCreditLedger) {
+    const sc = report.transactionalConsumers.storeCreditLedger;
+    lines.push(`  Store_Credit_Ledger:`);
+    lines.push(`    Exists: ${sc.exists}`);
+    if (sc.exists) {
+      lines.push(`    Rows: ${sc.rowCount}`);
+      lines.push(`    Hygiene: ${sc.clean ? 'CLEAN' : 'DIRTY'}`);
+      lines.push(`    Enforcement: ${sc.enforcementMode}`);
+      lines.push(`    Allows Unknown: ${sc.allowsUnknownNames}`);
+    }
+  }
+  
+  if (report.transactionalConsumers.preorders) {
+    const po = report.transactionalConsumers.preorders;
+    lines.push(`  Preorders:`);
+    lines.push(`    Exists: ${po.exists}`);
+    if (po.exists) {
+      lines.push(`    Sheet: ${po.sheetName}`);
+      lines.push(`    Rows: ${po.rowCount}`);
+      lines.push(`    Hygiene: ${po.clean ? 'CLEAN' : 'DIRTY'}`);
+      lines.push(`    Enforcement: ${po.enforcementMode}`);
+      lines.push(`    Allows Unknown: ${po.allowsUnknownNames}`);
+    }
+  }
+  lines.push('');
+  
+  // Derived Consumers
+  lines.push('─── DERIVED TRUTH CONSUMERS ───');
+  
+  if (report.derivedConsumers.playerLookup) {
+    const pl = report.derivedConsumers.playerLookup;
+    lines.push(`  PlayerLookup:`);
+    lines.push(`    Exists: ${pl.exists}`);
+    if (pl.exists) {
+      lines.push(`    Rows: ${pl.rowCount}`);
+      lines.push(`    Status: ${pl.lastBuilt}`);
+    } else {
+      lines.push(`    Message: ${pl.message}`);
+    }
+  }
+  
+  if (report.derivedConsumers.provisionalLedgerNames) {
+    lines.push(`  Provisional_Ledger_Names: ${report.derivedConsumers.provisionalLedgerNames.rowCount} rows`);
+  }
+  
+  if (report.derivedConsumers.resolveUnknownsDashboard) {
+    lines.push(`  Resolve_Unknowns_Dashboard: ${report.derivedConsumers.resolveUnknownsDashboard.rowCount} rows`);
+  }
+  
+  if (report.derivedConsumers.missionLog) {
+    lines.push(`  MissionLog: ${report.derivedConsumers.missionLog.rowCount} rows`);
+  }
+  lines.push('');
+  
+  // Retired Sheets
+  if (report.retiredSheets.length > 0) {
+    lines.push('─── RETIRED SHEETS (Legacy - Read Only) ───');
+    report.retiredSheets.forEach(sheet => {
+      lines.push(`  ${sheet.name}: ${sheet.exists ? `${sheet.rowCount} rows` : 'Not found'}`);
+    });
+    lines.push('');
+  }
+  
+  // Errors
+  if (report.errors && report.errors.length > 0) {
+    lines.push('─── ERRORS ───');
+    report.errors.forEach(err => {
+      lines.push(`  ⚠ ${err}`);
+    });
+    lines.push('');
+  }
+  
+  lines.push('═══════════════════════════════════════════════════════════');
+  
+  const output = lines.join('\n');
+  console.log(output);
+  
+  // Also log to Integrity_Log
+  if (typeof logIntegrityAction === 'function') {
+    try {
+      logIntegrityAction('PHASE5_AUDIT', {
+        details: `Generated Phase 5 audit report: ${report.canonicalNames.count} canonical names, ${report.undiscoveredNames.open} open unknowns`,
+        status: 'SUCCESS'
+      });
+    } catch (e) {
+      console.warn('Failed to log audit to Integrity_Log:', e);
+    }
+  }
+  
+  return output;
 }

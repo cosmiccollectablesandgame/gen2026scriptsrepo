@@ -349,12 +349,19 @@ function getTargetSheetsForMapping_(ss) {
     'Dice_Points',
     'BP_Total',
     'Key_Tracker',
-    'Players_Prize-Wall-Points',
     'Event_Outcomes',
     'Prestige_Overflow'
   ];
-
+  
+  // Phase 5: Exclude retired sheets
+  const retiredSheets = ['Players_Prize-Wall-Points', 'Player\'s Prize-Wall-Points'];
+  
   optionalSheetNames.forEach(name => {
+    // Skip retired sheets
+    if (retiredSheets.some(r => r.toLowerCase() === name.toLowerCase())) {
+      return;
+    }
+    
     const sheet = ss.getSheetByName(name);
     if (sheet) {
       targets.push(sheet);
