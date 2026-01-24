@@ -220,11 +220,13 @@ function smartParseRoster(text) {
             // This is a player boundary!
             playerBlobs.push(currentBlob.trim());
             currentBlob = '';
-            i = j; // Skip the space
+            i = j; // Skip the space, will increment to next char at loop end
             continue;
           }
         }
-        i = j - 1; // We already added chars, backtrack by 1
+        // If we added extra % chars, continue from where we left off
+        // (We'll increment i at the loop end, so subtract 1 to account for that)
+        i = j - 1;
       }
       i++;
     }
@@ -237,7 +239,8 @@ function smartParseRoster(text) {
     // Extract names from each player blob
     // Pattern: {optional rank digits}{Name}{points digit}{W/L/D}{percentages}
     // Name extraction: strip leading digits, capture letters/spaces/apostrophes/hyphens until digit
-    const nameExtractionPattern = /^(\d{0,2})([A-Za-z][A-Za-z' -]*?)\d/;
+    // Using positive lookahead to match name up to (but not including) the first digit
+    const nameExtractionPattern = /^(\d{0,2})([A-Za-z][A-Za-z' -]*)(?=\d)/;
     
     for (let blob of playerBlobs) {
       const match = blob.match(nameExtractionPattern);
@@ -249,17 +252,8 @@ function smartParseRoster(text) {
       }
     }
     
-    // Skip to deduplication
-    const seen = new Set();
-    const unique = [];
-    for (const p of players) {
-      const lower = p.toLowerCase();
-      if (!seen.has(lower)) {
-        seen.add(lower);
-        unique.push(p);
-      }
-    }
-    return unique;
+    // Deduplicate and return
+    return deduplicatePlayers_(players);
   }
   
   // ========================================================================
@@ -350,6 +344,16 @@ function smartParseRoster(text) {
   }
   
   // Deduplicate
+  return deduplicatePlayers_(players);
+}
+
+/**
+ * Deduplicates player names (case-insensitive)
+ * @param {Array<string>} players - Player names
+ * @return {Array<string>} Unique player names
+ * @private
+ */
+function deduplicatePlayers_(players) {
   const seen = new Set();
   const unique = [];
   for (const p of players) {
