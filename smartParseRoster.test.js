@@ -93,7 +93,10 @@ function arraysEqual(a, b) {
 function testWERSmushedFormat(results) {
   // Test case 1: Actual WER smushed format - SINGLE LINE, space-separated
   // This is the REAL format from the problem statement
-  const input1 = "Cy Diskin93/0/055.6%100.0%55.6% 2Justin Johnson93/0/055.6%85.7%51.0% 3Jake Martin93/0/050.0%85.7%47.3% 4Michael Davis93/0/044.4%75.0%44.4%";
+  const input1 = "Cy Diskin93/0/055.6%100.0%55.6% " +
+                 "2Justin Johnson93/0/055.6%85.7%51.0% " +
+                 "3Jake Martin93/0/050.0%85.7%47.3% " +
+                 "4Michael Davis93/0/044.4%75.0%44.4%";
   const result1 = smartParseRoster(input1);
   const expected1 = ["Cy Diskin", "Justin Johnson", "Jake Martin", "Michael Davis"];
   
