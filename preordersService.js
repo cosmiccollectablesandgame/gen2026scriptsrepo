@@ -341,6 +341,7 @@ function getPreorderBucketsForUI() {
 /**
  * Sells a preorder (creates entries in Preorders_Sold and decrements Preorders_Buckets)
  * FIXED: Handles both qty and qtyWanted from the basket
+ * Phase 5: ENFORCES canonical names - blocks if customer name is not in PreferredNames
  * @param {Object} payload - The preorder payload
  * @param {string} payload.customerName - Customer's preferred name
  * @param {string} payload.contactInfo - Customer contact info
@@ -360,6 +361,38 @@ function sellPreorder(payload) {
 
     if (!payload.basket || payload.basket.length === 0) {
       return { status: 'ERROR', message: 'Basket cannot be empty' };
+    }
+    
+    // Phase 5: Enforce canonical names for preorders
+    const customerName = payload.customerName.trim();
+    
+    // Check if name is canonical
+    let canonicalName = customerName;
+    if (typeof isCanonicalName === 'function' && typeof getCanonicalName === 'function') {
+      if (!isCanonicalName(customerName)) {
+        // Try to get canonical spelling
+        const canonical = getCanonicalName(customerName);
+        
+        if (canonical) {
+          // Use canonical spelling
+          canonicalName = canonical;
+        } else {
+          // Name not found - queue and block
+          if (typeof queueUnknownName === 'function') {
+            queueUnknownName(customerName, 'PREORDERS', 'Preorders_Sold', 'PreorderAttempt');
+          }
+          
+          return {
+            status: 'ERROR',
+            message: `Customer name "${customerName}" is not in PreferredNames. Please add them first or check spelling.`,
+            needsResolution: true,
+            unknownName: customerName
+          };
+        }
+      } else {
+        // Get exact canonical spelling
+        canonicalName = getCanonicalName(customerName) || customerName;
+      }
     }
 
     ensurePreordersSoldSchema();
@@ -399,7 +432,7 @@ function sellPreorder(payload) {
 
       return [
         preorderId,
-        payload.customerName.trim(),
+        canonicalName,  // Use canonical name from Phase 5 validation
         payload.contactInfo || '',
         item.setName || '',
         item.itemName || '',
@@ -428,7 +461,7 @@ function sellPreorder(payload) {
     // Log integrity action (if function exists)
     if (typeof logIntegrityAction === 'function') {
       logIntegrityAction('PREORDER_CREATED', {
-        preferredName: payload.customerName,
+        preferredName: canonicalName,  // Use canonical name
         details: `Preorder ${preorderId}: ${payload.basket.length} items, Total: ${formatCurrency(totalDue)}, Deposit: ${formatCurrency(depositPaid)}`,
         status: 'SUCCESS'
       });
@@ -437,7 +470,7 @@ function sellPreorder(payload) {
     return {
       status: 'OK',
       preorderId: preorderId,
-      customerName: payload.customerName,
+      customerName: canonicalName,  // Return canonical name
       itemCount: payload.basket.length,
       totalDue: totalDue,
       balance: balanceDue,
