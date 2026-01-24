@@ -168,14 +168,103 @@ function smartParseRoster(text) {
   const lines = text.trim().split(/\r?\n/);
   const players = [];
   
-  // WER smushed format regex pattern
-  // Captures: (rank)(name)(points)(W/L/D record)
-  // Group 1: 1-2 digit rank (e.g., "1", "14")
-  // Group 2: Player name with letters, spaces, apostrophes, hyphens (e.g., "Cy Diskin", "O'Brien", "John")
-  // Group 3: 1 digit points - WER format uses single digit points (0-9)
-  // Group 4: W/L/D record format (e.g., "3/0/0")
-  // Note: Name pattern allows single word or multi-word names with spaces/apostrophes/hyphens
-  const WER_SMUSHED_PATTERN = /^(\d{1,2})([A-Za-z]+(?:[ '\-][A-Za-z]+)*)(\d)(\d\/\d\/\d)/;
+  // ========================================================================
+  // DETECT WER SMUSHED FORMAT (single line, space-separated players)
+  // ========================================================================
+  // Format A example: "Cy Diskin93/0/055.6%100.0%55.6% 2Justin Johnson93/0/055.6%85.7%51.0%"
+  // Characteristics:
+  // - Contains W/L/D pattern (e.g., "3/0/0") AND percentage signs
+  // - All on ONE LINE (no newlines separate players)
+  // - Player 1 has NO rank prefix, subsequent players have rank digit(s)
+  // - Player boundary: space after percentage, before rank digit
+  
+  const hasWLDPattern = /\d\/\d\/\d/.test(text);
+  const hasPercentages = text.includes('%');
+  const isSingleLine = lines.length === 1;
+  
+  if (isSingleLine && hasWLDPattern && hasPercentages) {
+    // This is WER smushed format - parse as single line
+    const textToSplit = text.trim();
+    
+    // Split players at boundaries: % followed by space and optional rank digit
+    // Player boundary pattern: percentage(s), then space, then start of next player
+    // First player has no rank: "Cy Diskin93/0/0..."
+    // Subsequent players have rank: "2Justin Johnson93/0/0..."
+    
+    // Strategy: Split on pattern that appears BETWEEN players
+    // Pattern: {one or more %}...{space}{digit} (the digit starts next player's rank)
+    // We want to split just before the space that precedes the rank
+    
+    // Use a regex that finds: %{stuff}% followed by space and digit
+    // Split while keeping the parts we need
+    const playerBlobs = [];
+    let currentBlob = '';
+    let i = 0;
+    
+    while (i < textToSplit.length) {
+      currentBlob += textToSplit[i];
+      
+      // Check if we're at a player boundary
+      // Look for: current char is %, followed by space, then digit
+      if (textToSplit[i] === '%') {
+        // Check ahead for space + digit (start of next player)
+        let j = i + 1;
+        // Skip any additional % characters
+        while (j < textToSplit.length && textToSplit[j] === '%') {
+          currentBlob += textToSplit[j];
+          j++;
+        }
+        // Now check if next is space followed by digit
+        if (j < textToSplit.length && textToSplit[j] === ' ') {
+          if (j + 1 < textToSplit.length && /\d/.test(textToSplit[j + 1])) {
+            // This is a player boundary!
+            playerBlobs.push(currentBlob.trim());
+            currentBlob = '';
+            i = j; // Skip the space
+            continue;
+          }
+        }
+        i = j - 1; // We already added chars, backtrack by 1
+      }
+      i++;
+    }
+    
+    // Add the last player blob
+    if (currentBlob.trim()) {
+      playerBlobs.push(currentBlob.trim());
+    }
+    
+    // Extract names from each player blob
+    // Pattern: {optional rank digits}{Name}{points digit}{W/L/D}{percentages}
+    // Name extraction: strip leading digits, capture letters/spaces/apostrophes/hyphens until digit
+    const nameExtractionPattern = /^(\d{0,2})([A-Za-z][A-Za-z' -]*?)\d/;
+    
+    for (let blob of playerBlobs) {
+      const match = blob.match(nameExtractionPattern);
+      if (match && match[2]) {
+        const extractedName = match[2].trim();
+        if (extractedName) {
+          players.push(properCase(extractedName));
+        }
+      }
+    }
+    
+    // Skip to deduplication
+    const seen = new Set();
+    const unique = [];
+    for (const p of players) {
+      const lower = p.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        unique.push(p);
+      }
+    }
+    return unique;
+  }
+  
+  // ========================================================================
+  // LINE-BY-LINE PROCESSING (existing formats)
+  // ========================================================================
   
   for (let raw of lines) {
     let s = (raw || "").trim();
@@ -183,23 +272,12 @@ function smartParseRoster(text) {
     // Skip empty lines
     if (!s) continue;
     
-    // EARLY DETECTION: WER smushed format (no spaces between rank, name, points, record)
-    // Pattern: {1-2 digit rank}{First Last}{1 digit points}{W/L/D record}{percentages}
-    // Example: "1Cy Diskin93/0/055.6%100.0%55.6%"
-    const werSmushedMatch = s.match(WER_SMUSHED_PATTERN);
-    if (werSmushedMatch) {
-      const extractedName = werSmushedMatch[2].trim();
-      if (extractedName) {
-        players.push(properCase(extractedName));
-        continue;
-      }
-    }
-    
     // Skip lines with these keywords (contains, not exact match)
     const skipKeywords = ['eventlink', 'copyright', 'wizards', 'coast', 'report:', 
                           'event:', 'event date:', 'event information:', 'format:', 
                           'structure:', 'opponent', 'match win', 'game win', 
-                          'rank', 'omw%', 'gw%', 'ogw%', 'points', '---', '==='];
+                          'rank', 'omw%', 'gw%', 'ogw%', 'points', '---', '===',
+                          'none', 'not submitted', 'manual'];  // EventLink junk lines
     const lowerLine = s.toLowerCase();
     if (skipKeywords.some(keyword => lowerLine.includes(keyword))) continue;
     
