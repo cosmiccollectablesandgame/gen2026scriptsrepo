@@ -4,6 +4,28 @@
  */
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/**
+ * Task urgency priority mapping
+ * Higher values indicate higher priority
+ * @constant {Object}
+ */
+const URGENCY_PRIORITY = {
+  'ASAP': 4,
+  'High': 3,
+  'Medium': 2,
+  'Low': 1
+};
+
+/**
+ * Urgency levels considered urgent
+ * @constant {string[]}
+ */
+const URGENT_LEVELS = ['High', 'ASAP'];
+
+// ============================================================================
 // SEARCH CUSTOMERS
 // ============================================================================
 
@@ -339,7 +361,7 @@ function createErrorResponse_(query, message) {
     message: message,
     meta: {
       lastUpdated: dateISO(),
-      source: 'v7.9.7 PlayerLookup',
+      source: 'v8.0.0 PlayerLookup',
       errors: [message]
     }
   };
@@ -403,11 +425,17 @@ function buildPlayerProfile_(canonicalName, query) {
   // Get preorders info
   const preorders = getPreordersInfo_(canonicalName, errors);
 
+  // v8.0.0: Get open tasks info
+  const openTasks = getOpenTasksInfo_(canonicalName, errors);
+
   // Get attendance info
   const attendance = getAttendanceInfo_(canonicalName, errors);
 
   // Get missions info
   const missions = getMissionsInfo_(canonicalName, errors);
+
+  // v8.0.0: Get wishlist info
+  const wishlist = getWishlistInfo_(canonicalName, errors);
 
   // Get flags info
   const flags = getFlagsInfo_(canonicalName, errors);
@@ -415,7 +443,8 @@ function buildPlayerProfile_(canonicalName, query) {
   // Build summary line
   const summary = buildSummaryLine_(identity, bonusPoints, keys, storeCredit, attendance);
 
-  return {
+  // Build profile object
+  const profile = {
     status: 'OK',
     query: query,
     playerId: canonicalName,
@@ -430,17 +459,24 @@ function buildPlayerProfile_(canonicalName, query) {
     keys: keys,
     storeCredit: storeCredit,
     preorders: preorders,
+    openTasks: openTasks,  // v8.0.0: New field
     attendance: attendance,
     missions: missions,
+    wishlist: wishlist,    // v8.0.0: New field
     leagues: [],
     flags: flags,
 
     meta: {
       lastUpdated: dateISO(),
-      source: 'v7.9.7 PlayerLookup',
+      source: 'v8.0.0 PlayerLookup',
       errors: errors.length > 0 ? errors : undefined
     }
   };
+
+  // v8.0.0: Compute alerts
+  profile.alerts = computeAlerts_(profile);
+
+  return profile;
 }
 
 /**
@@ -718,6 +754,10 @@ function getStoreCreditInfo_(name, errors) {
  */
 function getPreordersInfo_(name, errors) {
   const result = {
+    count: 0,
+    items: [],
+    hasReadyPickup: false,
+    // Legacy fields for backward compatibility
     active: [],
     historyCount: 0
   };
@@ -762,7 +802,13 @@ function getPreordersInfo_(name, errors) {
                 balanceDue = coerceNumber(data[i][balanceCol], balanceDue);
               }
 
-              result.active.push({
+              // v8.0.0: Check if item is ready for pickup
+              const isReady = status === 'Arrived';
+              if (isReady) {
+                result.hasReadyPickup = true;
+              }
+
+              const preorderItem = {
                 rowIndex: i + 1,
                 setName: setCol !== -1 ? String(data[i][setCol] || '') : '',
                 itemName: itemCol !== -1 ? String(data[i][itemCol] || '') : '',
@@ -770,16 +816,100 @@ function getPreordersInfo_(name, errors) {
                 unitPrice: unitPrice,
                 paidAmount: paid,
                 balanceDue: balanceDue,
-                status: status
-              });
+                status: status,
+                isReady: isReady  // v8.0.0: New field
+              };
+
+              result.active.push(preorderItem);
+              result.items.push(preorderItem);
             }
           }
         }
+        
+        result.count = result.items.length;
       }
     }
   } catch (e) {
     errors.push('Preorders lookup error: ' + e.message);
     Logger.log('Preorders lookup error: ' + e.message);
+  }
+
+  return result;
+}
+
+/**
+ * Gets open tasks from Communication_Log (formerly Employee_Log)
+ * @param {string} name - Player's PreferredName
+ * @param {string[]} errors - Error array to append to
+ * @return {Object} { count, items[], hasUrgent }
+ * @private
+ */
+function getOpenTasksInfo_(name, errors) {
+  const result = {
+    count: 0,
+    items: [],
+    hasUrgent: false
+  };
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // Try Communication_Log first, fallback to Employee_Log for migration
+    let taskSheet = ss.getSheetByName('Communication_Log');
+    if (!taskSheet || taskSheet.getLastRow() <= 1) {
+      taskSheet = ss.getSheetByName('Employee_Log');
+    }
+
+    if (taskSheet && taskSheet.getLastRow() > 1) {
+      const data = taskSheet.getDataRange().getValues();
+      const headers = data[0];
+      const customerCol = findColumnIndex_(headers, ['customer_name', 'Customer_Name', 'PreferredName', 'Name']);
+      const statusCol = findColumnIndex_(headers, ['status', 'Status']);
+      const taskCol = findColumnIndex_(headers, ['task_summary', 'Task_Summary', 'Summary']);
+      const urgencyCol = findColumnIndex_(headers, ['urgency', 'Urgency']);
+      const dueDateCol = findColumnIndex_(headers, ['due_date', 'Due_Date', 'DueDate']);
+      const assignedCol = findColumnIndex_(headers, ['assigned_employee', 'Assigned_Employee', 'AssignedTo']);
+
+      if (customerCol !== -1 && statusCol !== -1) {
+        const matchingTasks = [];
+        
+        for (let i = 1; i < data.length; i++) {
+          const customerName = String(data[i][customerCol] || '').trim();
+          const status = String(data[i][statusCol] || '').trim();
+          
+          // Match customer name and status = "Open"
+          if (customerName.toLowerCase() === name.toLowerCase() && status.toLowerCase() === 'open') {
+            const urgency = urgencyCol !== -1 ? String(data[i][urgencyCol] || 'Low') : 'Low';
+            
+            // Check if urgent using constant
+            if (URGENT_LEVELS.includes(urgency)) {
+              result.hasUrgent = true;
+            }
+
+            matchingTasks.push({
+              taskSummary: taskCol !== -1 ? String(data[i][taskCol] || '') : '',
+              urgency: urgency,
+              dueDate: dueDateCol !== -1 ? formatDateSafe_(data[i][dueDateCol]) : '',
+              assignedEmployee: assignedCol !== -1 ? String(data[i][assignedCol] || '') : '',
+              rowIndex: i + 1
+            });
+          }
+        }
+
+        // Sort by urgency priority (ASAP > High > Medium > Low) and return up to 5
+        matchingTasks.sort((a, b) => {
+          const priorityA = URGENCY_PRIORITY[a.urgency] || 0;
+          const priorityB = URGENCY_PRIORITY[b.urgency] || 0;
+          return priorityB - priorityA;
+        });
+
+        result.count = matchingTasks.length;
+        result.items = matchingTasks.slice(0, 5);
+      }
+    }
+  } catch (e) {
+    errors.push('Open tasks lookup error: ' + e.message);
+    Logger.log('Open tasks lookup error: ' + e.message);
   }
 
   return result;
@@ -937,6 +1067,58 @@ function getMissionsInfo_(name, errors) {
 }
 
 /**
+ * Gets wishlist items from Wishlist sheet
+ * @param {string} name - Player's PreferredName
+ * @param {string[]} errors - Error array to append to
+ * @return {Object} { count, items[] }
+ * @private
+ */
+function getWishlistInfo_(name, errors) {
+  const result = {
+    count: 0,
+    items: []
+  };
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const wishlistSheet = ss.getSheetByName('Wishlist');
+
+    if (wishlistSheet && wishlistSheet.getLastRow() > 1) {
+      const data = wishlistSheet.getDataRange().getValues();
+      const headers = data[0];
+      const nameCol = findColumnIndex_(headers, ['PreferredName', 'Preferred_Name', 'Name']);
+      const itemCol = findColumnIndex_(headers, ['Item_Description', 'ItemDescription', 'Item', 'Description']);
+      const dateCol = findColumnIndex_(headers, ['Date_Added', 'DateAdded', 'Date']);
+      const statusCol = findColumnIndex_(headers, ['Status', 'status']);
+      const notesCol = findColumnIndex_(headers, ['Notes', 'notes', 'Note']);
+
+      if (nameCol !== -1) {
+        for (let i = 1; i < data.length; i++) {
+          const playerName = String(data[i][nameCol] || '').trim();
+          const status = statusCol !== -1 ? String(data[i][statusCol] || 'Open').trim() : 'Open';
+          
+          // Match PreferredName and status = "Open"
+          if (playerName.toLowerCase() === name.toLowerCase() && status.toLowerCase() === 'open') {
+            result.items.push({
+              itemDescription: itemCol !== -1 ? String(data[i][itemCol] || '') : '',
+              dateAdded: dateCol !== -1 ? formatDateSafe_(data[i][dateCol]) : '',
+              notes: notesCol !== -1 ? String(data[i][notesCol] || '') : ''
+            });
+          }
+        }
+        
+        result.count = result.items.length;
+      }
+    }
+  } catch (e) {
+    errors.push('Wishlist lookup error: ' + e.message);
+    Logger.log('Wishlist lookup error: ' + e.message);
+  }
+
+  return result;
+}
+
+/**
  * Gets flags and notes info
  * @param {string} name - Player name
  * @param {string[]} errors - Error array
@@ -1035,6 +1217,21 @@ function buildSummaryLine_(identity, bonusPoints, keys, storeCredit, attendance)
   }
 
   return parts.join(' • ');
+}
+
+/**
+ * Computes alert flags from profile data
+ * @param {Object} profile - Assembled profile object
+ * @return {Object} { readyForPickup, urgentTask, creditOwed, wishlistMatch }
+ * @private
+ */
+function computeAlerts_(profile) {
+  return {
+    readyForPickup: profile.preorders?.hasReadyPickup || false,
+    urgentTask: profile.openTasks?.hasUrgent || false,
+    creditOwed: profile.preorders?.items?.some(p => p.balanceDue < 0) || false,
+    wishlistMatch: false  // Future: implement Prize_Catalog cross-ref
+  };
 }
 
 /**
