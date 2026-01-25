@@ -4,6 +4,28 @@
  */
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/**
+ * Task urgency priority mapping
+ * Higher values indicate higher priority
+ * @constant {Object}
+ */
+const URGENCY_PRIORITY = {
+  'ASAP': 4,
+  'High': 3,
+  'Medium': 2,
+  'Low': 1
+};
+
+/**
+ * Urgency levels considered urgent
+ * @constant {string[]}
+ */
+const URGENT_LEVELS = ['High', 'ASAP'];
+
+// ============================================================================
 // SEARCH CUSTOMERS
 // ============================================================================
 
@@ -859,8 +881,8 @@ function getOpenTasksInfo_(name, errors) {
           if (customerName.toLowerCase() === name.toLowerCase() && status.toLowerCase() === 'open') {
             const urgency = urgencyCol !== -1 ? String(data[i][urgencyCol] || 'Low') : 'Low';
             
-            // Check if urgent (High or ASAP)
-            if (urgency === 'High' || urgency === 'ASAP') {
+            // Check if urgent using constant
+            if (URGENT_LEVELS.includes(urgency)) {
               result.hasUrgent = true;
             }
 
@@ -875,10 +897,9 @@ function getOpenTasksInfo_(name, errors) {
         }
 
         // Sort by urgency priority (ASAP > High > Medium > Low) and return up to 5
-        const urgencyPriority = { 'ASAP': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
         matchingTasks.sort((a, b) => {
-          const priorityA = urgencyPriority[a.urgency] || 0;
-          const priorityB = urgencyPriority[b.urgency] || 0;
+          const priorityA = URGENCY_PRIORITY[a.urgency] || 0;
+          const priorityB = URGENCY_PRIORITY[b.urgency] || 0;
           return priorityB - priorityA;
         });
 
