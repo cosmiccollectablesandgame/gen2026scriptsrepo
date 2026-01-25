@@ -131,8 +131,9 @@ function onEditRouter(e) {
     // ========================================================================
     // DEBOUNCE: LockService to prevent concurrent runs
     // ========================================================================
+    // Use script-level lock to prevent concurrent onEdit executions
+    // Note: Apps Script only supports script-level locks, not per-location locks
     const lock = LockService.getScriptLock();
-    const lockKey = `onEdit_${sheetName}_${e.range.getA1Notation()}`;
     
     try {
       if (!lock.tryLock(LOCK_TIMEOUT_MS)) {
@@ -197,43 +198,44 @@ function routeEditEvent(e, logContext) {
 
   // ============================================================================
   // Dice Points checkbox handler
-  // Note: onDicePointCheckboxEdit has internal guards to filter for Dice_Points
+  // Note: Only called for Dice_Points sheet, but onDicePointCheckboxEdit has
+  // internal guards for additional validation
   // ============================================================================
-  if (typeof onDicePointCheckboxEdit === 'function') {
+  if (sheetName === 'Dice_Points' && typeof onDicePointCheckboxEdit === 'function') {
     try {
       onDicePointCheckboxEdit(e);
       // The function logs internally, so we don't log here
-      if (sheetName === 'Dice_Points') {
-        processed = true;
-      }
+      processed = true;
     } catch (err) {
+      logContext.action = 'DICE_CHECKBOX_EDIT';
+      logContext.status = 'ERROR';
+      logContext.error = err.message || String(err);
+      logContext.endedAt = new Date();
+      logEvent(logContext);
       console.error('Dice Point Checkbox handler error:', err);
     }
   }
 
   // ============================================================================
   // Employee Log edit handler
-  // Note: handleEmployeeLogEdit_ has internal guards to filter for Employee_Log
+  // Note: Only called for Employee_Log sheet, but handleEmployeeLogEdit_ has
+  // internal guards for additional validation
   // ============================================================================
-  if (typeof handleEmployeeLogEdit_ === 'function') {
+  if (sheetName === 'Employee_Log' && typeof handleEmployeeLogEdit_ === 'function') {
     try {
       handleEmployeeLogEdit_(e);
-      // This function doesn't log, so we log here if it's the Employee_Log sheet
-      if (sheetName === 'Employee_Log') {
-        logContext.action = 'EMPLOYEE_LOG_EDIT';
-        logContext.status = 'SUCCESS';
-        logContext.endedAt = new Date();
-        logEvent(logContext);
-        processed = true;
-      }
+      // This function doesn't log, so we log here
+      logContext.action = 'EMPLOYEE_LOG_EDIT';
+      logContext.status = 'SUCCESS';
+      logContext.endedAt = new Date();
+      logEvent(logContext);
+      processed = true;
     } catch (err) {
-      if (sheetName === 'Employee_Log') {
-        logContext.action = 'EMPLOYEE_LOG_EDIT';
-        logContext.status = 'ERROR';
-        logContext.error = err.message || String(err);
-        logContext.endedAt = new Date();
-        logEvent(logContext);
-      }
+      logContext.action = 'EMPLOYEE_LOG_EDIT';
+      logContext.status = 'ERROR';
+      logContext.error = err.message || String(err);
+      logContext.endedAt = new Date();
+      logEvent(logContext);
       console.error('Employee Log handler error:', err);
     }
   }
@@ -420,7 +422,8 @@ function isEventSheet(sheetName) {
 
 /**
  * Central logging function for onEdit events
- * Logs to Integrity_Log sheet or falls back to Logger
+ * Delegates to logIntegrityAction in integrityService.js
+ * Falls back to Logger if integrityService is not available
  * @param {Object} context - Logging context
  * @param {string} context.sheet - Sheet name
  * @param {string} context.range - Range in A1 notation
@@ -433,39 +436,6 @@ function isEventSheet(sheetName) {
  */
 function logEvent(context) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let logSheet = ss.getSheetByName('Integrity_Log');
-    
-    // Create Integrity_Log sheet if it doesn't exist
-    if (!logSheet) {
-      logSheet = ss.insertSheet('Integrity_Log');
-      logSheet.appendRow([
-        'Timestamp',
-        'StoreID',
-        'Event_ID',
-        'Action',
-        'Operator',
-        'PreferredName',
-        'Seed',
-        'Checksum_Before',
-        'Checksum_After',
-        'RL_Band',
-        'DF_Tags',
-        'Details',
-        'Status'
-      ]);
-      logSheet.setFrozenRows(1);
-      logSheet.getRange('A1:M1')
-        .setFontWeight('bold')
-        .setBackground('#2196f3')
-        .setFontColor('#ffffff');
-    }
-
-    // Format timestamp
-    const timestamp = context.startedAt ? 
-      Utilities.formatDate(context.startedAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss'Z'") :
-      dateISO();
-
     // Calculate duration if both timestamps are available
     let details = '';
     if (context.startedAt && context.endedAt) {
@@ -485,28 +455,22 @@ function logEvent(context) {
       details += (details ? ' | ' : '') + `Error: ${context.error}`;
     }
 
-    // Append row to Integrity_Log
-    const row = [
-      timestamp,
-      'MAIN', // StoreID
-      '', // Event_ID (not applicable for onEdit)
-      context.action || 'ONEDIT',
-      context.user || currentUser(),
-      '', // PreferredName (not applicable for onEdit)
-      '', // Seed
-      '', // Checksum_Before
-      '', // Checksum_After
-      '', // RL_Band
-      '', // DF_Tags
-      details,
-      context.status || 'UNKNOWN'
-    ];
-    
-    logSheet.appendRow(row);
+    // Use the existing logIntegrityAction function if available
+    if (typeof logIntegrityAction === 'function') {
+      logIntegrityAction(context.action || 'ONEDIT', {
+        storeId: 'MAIN',
+        eventId: '', // Not applicable for onEdit
+        details: details,
+        status: context.status || 'UNKNOWN'
+      });
+    } else {
+      // Fallback to Logger if integrityService is not loaded
+      Logger.log(`[onEdit] ${context.action} - ${context.status} - ${context.sheet || 'N/A'}:${context.range || 'N/A'} - ${context.error || ''}`);
+    }
     
   } catch (err) {
-    // Fallback to Logger if Integrity_Log write fails
-    console.error('Failed to write to Integrity_Log:', err);
+    // Final fallback to console
+    console.error('Failed to log event:', err);
     Logger.log(`[onEdit] ${context.action} - ${context.status} - ${context.sheet || 'N/A'}:${context.range || 'N/A'} - ${context.error || ''}`);
   }
 }
