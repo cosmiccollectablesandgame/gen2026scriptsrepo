@@ -182,55 +182,100 @@ function onEditRouter(e) {
 function routeEditEvent(e, logContext) {
   const sheetName = e.range.getSheet().getName();
   
+  // Track if any handler processes this edit
+  let processed = false;
+  
+  // ============================================================================
   // Mission source sheets -> BP Total sync
+  // ============================================================================
   const missionSheets = ['Attendance_Missions', 'Flag_Missions', 'Dice Roll Points', 'Dice_Points'];
   if (missionSheets.includes(sheetName)) {
     logContext.action = 'MISSION_SHEET_EDIT';
     handleMissionSheetEdit(e, logContext);
-    return;
+    processed = true;
   }
 
+  // ============================================================================
   // Dice Points checkbox handler
-  if (sheetName === 'Dice_Points') {
-    logContext.action = 'DICE_CHECKBOX_EDIT';
-    handleDicePointsEdit(e, logContext);
-    return;
+  // Note: onDicePointCheckboxEdit has internal guards to filter for Dice_Points
+  // ============================================================================
+  if (typeof onDicePointCheckboxEdit === 'function') {
+    try {
+      onDicePointCheckboxEdit(e);
+      // The function logs internally, so we don't log here
+      if (sheetName === 'Dice_Points') {
+        processed = true;
+      }
+    } catch (err) {
+      console.error('Dice Point Checkbox handler error:', err);
+    }
   }
 
+  // ============================================================================
   // Employee Log edit handler
-  if (sheetName === 'Employee_Log') {
-    logContext.action = 'EMPLOYEE_LOG_EDIT';
-    handleEmployeeLogEdit(e, logContext);
-    return;
+  // Note: handleEmployeeLogEdit_ has internal guards to filter for Employee_Log
+  // ============================================================================
+  if (typeof handleEmployeeLogEdit_ === 'function') {
+    try {
+      handleEmployeeLogEdit_(e);
+      // This function doesn't log, so we log here if it's the Employee_Log sheet
+      if (sheetName === 'Employee_Log') {
+        logContext.action = 'EMPLOYEE_LOG_EDIT';
+        logContext.status = 'SUCCESS';
+        logContext.endedAt = new Date();
+        logEvent(logContext);
+        processed = true;
+      }
+    } catch (err) {
+      if (sheetName === 'Employee_Log') {
+        logContext.action = 'EMPLOYEE_LOG_EDIT';
+        logContext.status = 'ERROR';
+        logContext.error = err.message || String(err);
+        logContext.endedAt = new Date();
+        logEvent(logContext);
+      }
+      console.error('Employee Log handler error:', err);
+    }
   }
 
+  // ============================================================================
   // PreferredNames edit handler
+  // ============================================================================
   if (sheetName === 'PreferredNames') {
     logContext.action = 'PREFERRED_NAMES_EDIT';
     handlePreferredNamesEdit(e, logContext);
-    return;
+    processed = true;
   }
 
+  // ============================================================================
   // Player's Bonus Points variants
+  // ============================================================================
   const bonusPointsSheets = ['Player\'s Bonus Points', 'Players_Prize-Wall-Points', 'Player\'s Prize-Wall-Points'];
   if (bonusPointsSheets.includes(sheetName)) {
     logContext.action = 'BONUS_POINTS_EDIT';
     handleBonusPointsEdit(e, logContext);
-    return;
+    processed = true;
   }
 
+  // ============================================================================
   // Event sheets (MM-DD-YYYY or MM-DD-X-YYYY pattern)
+  // ============================================================================
   if (isEventSheet(sheetName)) {
     logContext.action = 'EVENT_SHEET_EDIT';
     handleEventSheetEdit(e, logContext);
-    return;
+    processed = true;
   }
 
-  // If we get here, log as unhandled (should not happen due to allowlist)
-  logContext.action = 'ONEDIT_UNHANDLED';
-  logContext.status = 'SKIPPED';
-  logContext.endedAt = new Date();
-  logEvent(logContext);
+  // ============================================================================
+  // Unhandled edits
+  // ============================================================================
+  if (!processed) {
+    logContext.action = 'ONEDIT_UNHANDLED';
+    logContext.status = 'SKIPPED';
+    logContext.error = 'No handler matched the sheet';
+    logContext.endedAt = new Date();
+    logEvent(logContext);
+  }
 }
 
 // ============================================================================
@@ -268,55 +313,6 @@ function handleMissionSheetEdit(e, logContext) {
   }
 }
 
-/**
- * Handles Dice Points checkbox edits
- * @param {Object} e - Edit event object
- * @param {Object} logContext - Logging context
- */
-function handleDicePointsEdit(e, logContext) {
-  try {
-    if (typeof onDicePointCheckboxEdit === 'function') {
-      onDicePointCheckboxEdit(e);
-      logContext.status = 'SUCCESS';
-    } else {
-      logContext.status = 'SKIPPED';
-      logContext.error = 'onDicePointCheckboxEdit function not available';
-    }
-    logContext.endedAt = new Date();
-    logEvent(logContext);
-  } catch (err) {
-    logContext.status = 'ERROR';
-    logContext.error = err.message || String(err);
-    logContext.endedAt = new Date();
-    logEvent(logContext);
-    console.error('Dice points edit handler error:', err);
-  }
-}
-
-/**
- * Handles Employee Log edits
- * @param {Object} e - Edit event object
- * @param {Object} logContext - Logging context
- */
-function handleEmployeeLogEdit(e, logContext) {
-  try {
-    if (typeof handleEmployeeLogEdit_ === 'function') {
-      handleEmployeeLogEdit_(e);
-      logContext.status = 'SUCCESS';
-    } else {
-      logContext.status = 'SKIPPED';
-      logContext.error = 'handleEmployeeLogEdit_ function not available';
-    }
-    logContext.endedAt = new Date();
-    logEvent(logContext);
-  } catch (err) {
-    logContext.status = 'ERROR';
-    logContext.error = err.message || String(err);
-    logContext.endedAt = new Date();
-    logEvent(logContext);
-    console.error('Employee log edit handler error:', err);
-  }
-}
 
 /**
  * Handles PreferredNames sheet edits
