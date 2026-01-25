@@ -136,52 +136,25 @@ function onOpen(e) {
 
 /**
  * Handles edit events for the spreadsheet.
+ * 
+ * NOTE: This implementation has been refactored into a thin router pattern
+ * defined in onEditRouter.js with:
+ * - Guard clauses for event validation and multi-cell pastes
+ * - Sheet allowlist validation
+ * - LockService debouncing to prevent concurrent runs
+ * - Central logging to Integrity_Log
+ * - Named handler functions for each sheet type
+ * 
  * This is the ONLY onEdit function - do NOT define another one.
  * @param {Object} e - The onEdit event object
  */
 function onEdit(e) {
-  if (!e || !e.range) return;
-
-  const sheetName = e.range.getSheet().getName();
-
-  // BP Aggregator sync (keeps BP_Total in sync with source sheets)
-  // Only trigger sync for mission source sheets
-  const missionSheets = [
-    'Attendance_Missions',
-    'Flag_Missions',
-    'Dice Roll Points',
-    'Dice_Points' // Legacy fallback
-  ];
-
-  if (missionSheets.includes(sheetName)) {
-    try {
-      // Use a debounce approach: only sync if the edit was to data rows (not header)
-      const editRow = e.range.getRow();
-      if (editRow > 1 && typeof updateBPTotalFromSources === 'function') {
-        updateBPTotalFromSources();
-      }
-    } catch (err) {
-      // Simple triggers can't show UI alerts, just log
-      console.error('onEdit BP sync failed:', err);
-    }
-  }
-
-  // Dice point checkbox handler
-  if (typeof onDicePointCheckboxEdit === 'function') {
-    try {
-      onDicePointCheckboxEdit(e);
-    } catch (err) {
-      console.error('Dice Point Checkbox onEdit error:', err);
-    }
-  }
-
-  // Employee Log edit handler
-  if (typeof handleEmployeeLogEdit_ === 'function') {
-    try {
-      handleEmployeeLogEdit_(e);
-    } catch (err) {
-      console.error('Employee Log onEdit error:', err);
-    }
+  // The implementation is in onEditRouter.js
+  // This wrapper is maintained for clarity and to ensure there's only one onEdit definition
+  if (typeof onEditRouter !== 'undefined') {
+    onEditRouter(e);
+  } else {
+    console.error('onEditRouter function not found - check that onEditRouter.js is loaded');
   }
 }
 
